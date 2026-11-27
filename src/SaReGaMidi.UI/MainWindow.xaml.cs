@@ -98,6 +98,17 @@ public partial class MainWindow : Window
     private void ReviewPages_SelectionChanged(object sender, SelectionChangedEventArgs e)
         => ReviewPreview.Source = (ReviewPages.SelectedItem as ReviewPage)?.Page.Preview;
 
+    private void Transcribe_Click(object sender, RoutedEventArgs e)
+    {
+        if (_workspace is null)
+            return;
+
+        TranscriptionWindow editor = new(_workspace, ReviewPages.SelectedIndex) { Owner = this };
+        editor.ShowDialog();
+
+        if (editor.Saved)
+            StatusText.Text = "Transcription saved to the workspace.";
+    }
     private void Settings_Click(object sender, RoutedEventArgs e)
     {
         SettingsWindow settings = new((App)Application.Current) { Owner = this };

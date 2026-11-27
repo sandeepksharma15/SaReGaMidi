@@ -66,7 +66,9 @@
                                 <AccessText Text="_Open work folder" />
                             </StackPanel>
                         </Button>
-                        <Button Style="{StaticResource PrimaryButton}" Click="ImportComposition_Click">
+                        <Button x:Name="TranscribeButton" Content="_Transcribe" Style="{StaticResource PrimaryButton}"
+                                Click="Transcribe_Click" Margin="0,0,8,0" />
+                        <Button Style="{StaticResource ActionButton}" Click="ImportComposition_Click">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" Margin="0,0,8,0" />
                                 <AccessText Text="_New import" />

@@ -23,6 +23,12 @@ Each import gets its own work folder with numbered scans in `source`, a `composi
 
 Use **Settings** to choose Light or Dark and set the work folder for future imports, and choose whether to reopen the previous workspace (default) or start blank. By default, imports go under `%LOCALAPPDATA%\SaReGaMidi\Work`. Existing composition folders stay where they were created.
 
+## Transcribe a composition
+
+From source review, select **Transcribe**. Use the scan on the left to check page references, and enter one maatra per row on the right. Give each section a name and set its first row's **Start beat** relative to sam.
+
+For the three original Ranjish Hi Sahi scans in reading order, **Load Ranjish Hi Sahi draft** brings in the printed sthayi and antara as a draft. Review the notes and cues against the book. **Save score** stores the transcription as `score.json` in the workspace. Open **Transcribe** again to resume editing.
+
 ## Development
 
 - [Development plan](docs/development/DEVELOPMENT_PLAN.md)

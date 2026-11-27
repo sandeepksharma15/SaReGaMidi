@@ -5,4 +5,7 @@
         <Nullable>enable</Nullable>
         <UseWPF>true</UseWPF>
     </PropertyGroup>
+    <ItemGroup>
+        <ProjectReference Include="../SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
+    </ItemGroup>
 </Project>
