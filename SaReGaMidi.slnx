@@ -3,6 +3,7 @@
     <File Path=".github/copilot-instructions.md" />
     <File Path="AGENTS.md" />
     <File Path="docs/development/CODING_STYLE.md" />
+    <File Path="docs/development/DEVELOPMENT_PLAN.md" />
     <File Path="docs/development/PROJECT_MEMORY.md" />
     <File Path="README.md" />
   </Folder>

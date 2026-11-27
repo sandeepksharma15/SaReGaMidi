@@ -1,0 +1,74 @@
+<Window x:Class="SaReGaMidi.UI.ImportWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Import composition • SaReGaMidi" Width="960" Height="690" MinWidth="660" MinHeight="455"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Style="{StaticResource WorkspaceWindow}">
+    <DockPanel>
+        <StatusBar DockPanel.Dock="Bottom" Style="{StaticResource WorkspaceStatusBar}">
+            <StatusBarItem>
+                <TextBlock x:Name="StatusText" AutomationProperties.LiveSetting="Polite"
+                           Style="{StaticResource MutedText}" />
+            </StatusBarItem>
+        </StatusBar>
+        <StackPanel DockPanel.Dock="Top" Margin="24,20,24,16">
+            <TextBlock Text="Import composition" Style="{StaticResource Heading}" />
+            <TextBlock Text="Add scans, then arrange the pages in reading order."
+                       Style="{StaticResource MutedText}" Margin="0,4,0,0" />
+        </StackPanel>
+        <DockPanel DockPanel.Dock="Bottom" LastChildFill="False" Margin="24,14">
+            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="CancelButton" Content="_Cancel" Style="{StaticResource ActionButton}"
+                        IsCancel="True" Margin="0,0,8,0" />
+                <Button x:Name="ImportButton" Style="{StaticResource PrimaryButton}" Click="Import_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE8E5;" Margin="0,0,8,0" />
+                        <AccessText Text="_Import pages" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </DockPanel>
+        <Grid Margin="24,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition />
+            </Grid.ColumnDefinitions>
+            <Border Style="{StaticResource Card}" Margin="0,0,14,0" Padding="12">
+                <DockPanel>
+                    <Button x:Name="AddPagesButton" Style="{StaticResource ActionButton}" Click="AddPages_Click" DockPanel.Dock="Top" HorizontalAlignment="Left" Margin="0,0,0,10">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" Margin="0,0,8,0" />
+                            <AccessText Text="_Add images…" />
+                        </StackPanel>
+                    </Button>
+                    <Border DockPanel.Dock="Bottom" Margin="0,10,0,0" Padding="4" HorizontalAlignment="Left"
+                            Background="{DynamicResource CanvasBrush}" CornerRadius="9">
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="MoveUpButton" Style="{StaticResource IconButton}" Click="MoveUp_Click"
+                                    ToolTip="Move page up" AutomationProperties.Name="Move page up">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE74A;" />
+                            </Button>
+                            <Button x:Name="MoveDownButton" Style="{StaticResource IconButton}" Click="MoveDown_Click"
+                                    ToolTip="Move page down" AutomationProperties.Name="Move page down">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE74B;" />
+                            </Button>
+                            <Border Width="1" Margin="4,7" Background="{DynamicResource LineBrush}" />
+                            <Button x:Name="RemovePageButton" Style="{StaticResource IconButton}" Click="RemovePage_Click"
+                                    ToolTip="Remove selected page" AutomationProperties.Name="Remove selected page">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE74D;" />
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <ListBox x:Name="PageList" Style="{StaticResource PageListStyle}" AutomationProperties.Name="Composition page order"
+                             DisplayMemberPath="Label" SelectionChanged="PageList_SelectionChanged" />
+                </DockPanel>
+            </Border>
+            <Border Grid.Column="1" Style="{StaticResource Card}">
+                <Grid>
+                    <TextBlock x:Name="NoPreviewText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Text="Select a page to preview it." Style="{StaticResource MutedText}" />
+                    <Image x:Name="PagePreview" Stretch="Uniform" AutomationProperties.Name="Selected page preview" />
+                </Grid>
+            </Border>
+        </Grid>
+    </DockPanel>
+</Window>

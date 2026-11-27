@@ -14,4 +14,6 @@
 - The built-in taal catalog adapts six Clefer.Domain patterns. Each entry covers one maatra and a null entry represents a rest. Rupak starts on both sam and khali and uses the 0–1–2 marking convention. Instrument mapping and stroke timing belong in playback. [Taal reference](https://naadabrahma.in/taal)
 - Clefer's rendering layout, audio analysis models and AI-backed raag lookup remain reference material. Define composition timing and the interpretation of printed sustain and rest signs before reusing score-level code.
 
+- Imports record user-confirmed page order in a versioned manifest beside copied scans. Each new composition has its own workspace with source and artifact folders. The work-folder setting applies to future imports. Startup reopens the last imported workspace by default.
+
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.
