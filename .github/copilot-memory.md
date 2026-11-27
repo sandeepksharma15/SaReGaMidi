@@ -1,0 +1,78 @@
+# Copilot Memory
+
+> **Purpose:** Persistent cross-session knowledge base. The AI reads this file at session start and appends learnings during work.
+> **Rule:** Only add entries that would save time or prevent mistakes in future sessions. Keep entries concise (1–2 lines each).
+
+---
+
+## Corrections
+
+<!-- User corrections to AI behavior or output. Format: `- YYYY-MM-DD: <what was wrong> → <what is correct>` -->
+
+## Preferences
+
+<!-- Explicit user preferences for code style, tooling, or workflow beyond what .editorconfig covers. -->
+- 2026-09-09: Prefer the newer C# extension member syntax (`extension<T>(...)`) for extension methods when supported by the language and applicable to the target type.
+- 2026-09-11: In test projects, prefer reusing existing shared fixture classes (for example `TestExpressionModels`) over creating new private test classes; keep nomenclature consistent across projects.
+
+## Architecture Decisions
+
+<!-- Non-obvious technical decisions made during development. Include brief rationale. -->
+- 2026-09-08: Collection-related extensions are split by target type (`ICollection<T>`, `IEnumerable<T>`, membership-on-item) and queryable extensions live in the LINQ area to keep files cohesive and discoverable.
+- 2026-09-29: Keep reusable test models and EF Core fixtures in `Tests/Support/Craft.Testing`; keep fixtures requiring a Craft library with that library's test project.
+- 2026-09-29: Group reflection test shapes under `Craft.Testing.Reflection.ReflectionTestModels` so multiple test suites can reuse inheritance, nested properties, clone graphs, and private-constructor cases.
+- 2026-09-29: Expression extension APIs remain in Craft.Expressions but use `System.Linq.Expressions` to be available with the natural BCL namespace; keep the package's auto-using list aligned.
+
+- 2026-09-30: Utilities helpers retain `Craft.Utilities.Helpers` while source/tests are grouped into Timing, IO, Text and Resilience folders; use injectable `TimeProvider` and fake time for scheduling tests.
+
+- 2026-10-06: Define the source-wide default key type through CraftDefaultKeyType in root Directory.Build.props (System.Int64 by default); use its generated KeyType alias instead of per-project aliases. Generic key contracts remain independent.
+
+- 2026-10-07: Domain transfer bases are mutable classes with reference equality. Entity equality requires an assigned ID and the same runtime type; configure key generation in persistence rather than a generic Identity annotation.
+
+- 2026-10-07: DomainEventBase requires UTC timestamps and supports restoring a non-empty event ID; event equality remains ID-only. Concrete JSON event constructors must forward persisted metadata rather than regenerate it.
+
+- 2026-10-07: Craft exceptions are grouped under Craft.Domain.Exceptions subnamespaces; named types have fixed statuses and immutable error snapshots. ToErrorInfo hides server diagnostics by default; FromException preserves cancellation and never infers client fault from runtime argument errors.
+
+## Patterns & Conventions
+
+<!-- Recurring patterns discovered in the codebase that new code should follow. -->
+
+## Gotchas
+
+<!-- Pitfalls, quirks, or non-obvious behaviors encountered in this workspace. -->
+
+- 2026-09-30: Reflection property value APIs support case-sensitive dotted paths with public-only access by default and explicit non-public opt-in; use strict assignment and write back nested structs. Setters require reference-type roots and reject init-only properties.
+
+- 2026-09-30: Generate simple DOCX/PDF test inputs during Arrange with Craft.Testing.Documents.TestDocumentFactory and isolated disposable Craft.Testing.IO.TemporaryDirectory; avoid copy-to-output binary fixtures for Live Testing portability.
+
+- 2026-10-07: All runnable test projects use native Microsoft Testing Platform via global.json, xunit.v3 and coverlet.MTP; avoid VSTest packages and legacy TestingPlatformDotnetTestSupport. Coverage reports have timestamped filenames.
+
+- 2026-10-07: DomainExtensions lives with its contracts in Craft.Domain.Abstractions. Null/default IDs never match tenant/user associations; IsNullOrDefault uses IHasId and exact default-key semantics (negative IDs are assigned). Parsing and creator-audit aliases do not belong in these extensions.
+
+- 2026-10-28: EntityHelper only inspects entity/tenant type contracts. Use entity Equals and existing identifier APIs instead of competing equality/default-ID helpers. Key lookup supports open generics and rejects ambiguous IEntity<TKey> contracts; TryGetEntityKeyType returns false/null for missing or ambiguous contracts.
+
+- 2026-10-28: Reusable type-contract reflection lives in Craft.Extensions TypeExtensions: HasImplementedInterface supports open generic interface definitions; IsGenericTypeOf matches only the type itself. EntityHelper delegates these checks and retains domain key selection/ambiguity rules.
+
+- DomainResources is a manually maintained validation facade over the sole English .resx catalog. Use resource-backed DataAnnotations, ambient UI/format cultures or explicit-culture Format; no global Culture override, duplicate constants/Localized wrappers, or unused exception catalog. DomainConstants.Fv adapts resource templates to FluentValidation tokens.
+
+- DomainConstants regexes use \A/\z whole-input anchors and support NonBacktracking. Preserve documented ASCII/code and unsigned numeric policies; phone permits Unicode digits but only literal spaces. Email/URL/phone are basic format checks, not complete semantic validators; DataAnnotations still needs Required for empty values.
+
+- Craft.CryptKey uses an explicitly configured singleton IHashKeys and a typed Hashids payload for int/long/Guid; no implicit encoder/salt or service-locator extensions. Configuration is validated/snapshotted; strict decoding throws FormatException and Try decoding rejects invalid input. Tokens are obfuscation, not authorization or authenticated encryption.
+
+- Craft.Auditing is opt-in and observational. AuditedDbContext coordinates business and audit writes in one relational transaction/savepoint; failed saves/outer rollbacks require a fresh context. The planned Craft.Data context pipeline owns ISoftDelete changes before audit capture (superseding repository ownership). Use IAuditContext, scoped option snapshots, exact composite-key lookup, and explicit scheduled ArchiveDueAsync batches; no static configuration or automatic graph scanning.
+
+- V10 architecture inventory and proposed V11 boundaries are recorded in docs/Craft-V10-Architecture-Review.md. Treat proposals as recommendations until accepted; do not automatically port V10 dependencies or provider stubs.
+
+- Craft.Core has no package/framework/project dependencies beyond .NET. Result/Result<T> carry immutable structured errors without HTTP status; nullable success remains success. Page<T>/PageInfo use standard JSON and checked long pagination. Current identity contracts are read-only with TryGetId; deferred Data/Web/Security work is in root TODO.md. Removed EF/HTTP/envelope/DI-marker APIs must not be reintroduced into Core.
+
+- Craft.Security is replaced by Craft.Authentication (optional local JWT issuance/validation/revocation and HTTP current user) and Craft.Identity (account models/refresh-session contracts). No raw cookie JWT authentication or implicit production in-memory revocation. Blazor and transactional Data.Identity integration are deferred in TODO.md; refresh secrets are never persisted, only hashes.
+
+- Craft.Data owns the one relational save coordinator; Craft.Auditing plugs into it with a one-way Data dependency. CraftIdentityDbContext shares that coordinator. Features are explicit, contexts scoped/unpooled, tenant identities snapshotted and query-parameterized, and failed writes require fresh contexts. ISoftDelete remains a Domain contract; behavior lives in Data.
+
+- Craft.Repositories defaults to autoSave=true by user preference; false stages a shared unit. Every save commits the entire context. Read interfaces materialize/no-track; tracked editing preserves originals. includeDetails applies overridden default includes, never graph discovery. Core EF behavior stays in Craft.Data; test stubs are separate and fail for unconfigured operations.
+
+- Tenant IDs participating in EF keys use context-based client value generation before tracking, so nullable/default keys work in tenant-safe relationship graphs. Non-key tenant values still use the save pipeline; explicit cross-tenant ownership remains rejected.
+
+- Craft.Controllers: authenticated abstract DTO-based read/CRUD/soft-delete bases; original ETag required for IHasConcurrency updates/deletes/restores (428 missing, 400 malformed/wildcard/list, 412 stale/race). Batch tokens are per-item. Explicit mapping; one shared-context save; query-level visibility for collections. Host owns antiforgery, body limits and policies.
+
+- Craft.HttpServices composes Core Result/Result<T> with HTTP metadata; controllers still return typed payloads/ProblemDetails. Caller cancellation propagates; transport failures are sanitized outcomes. No implicit write retry or ETag refresh. Inject MapsterMapper.IMapper with host-owned TypeAdapterConfig in clients/controllers; tracked updates remain explicit allowlisted mappings, and entity repositories have no mapper dependency.
