@@ -18,6 +18,8 @@
 
 - The versioned score file stores composition, sections, and maatras. Each section starts on an explicit beat of the taal. Swara durations are exact maatra fractions. Lyric text and review annotations are stored separately from swara events. Source page references are independent of cycle timing. Khatka, kan swar and outgoing meend attach to pitched swaras. Maatra grouping is a display mark, and S extends the lyric syllable without changing musical time.
 
-- In the printed Sthayi of Ranjish Hi Sahi, the two rows give alternative pickups on Dadra beats 5 and 6. The first pass uses the upper row. The second uses the lower row and continues into the next Sthayi line at sam. The score stores each pass as an ordered range of written maatras, independent of scan pagination.
+- In the printed Sthayi of Ranjish Hi Sahi, the second pass borrows Dadra beats 1–3 from the upper row, then uses the lower row from beat 4. Borrowed swaras resolve through explicit written-maatra references while the written swara cells remain blank. Printed-line starts affect layout only.
+- Explicit meend endpoints use stable swara anchors, following Clefer's span model. A span can cross multiple maatras and printed lines. Older next-swara meends remain readable.
+- The meend editor can filter destinations by written maatra distance. A fully blank maatra keeps its rhythm position and may still borrow swaras during a pass. The score exposes each written S as a LyricalContinuation marker on the lyric line.
 
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.

@@ -147,7 +147,8 @@ public partial class TranscriptionWindow : Window
     private void DisplayScore(CompositionScore score)
     {
         if (RanjishHiSahiDraft.Matches(_workspace.Pages))
-            score = RanjishHiSahiDraft.RestorePasses(score);
+            score = RanjishHiSahiDraft.RestoreBorrowedPickup(
+                RanjishHiSahiDraft.RestorePrintedLines(RanjishHiSahiDraft.RestorePasses(score)));
 
         _passes.Clear();
         TitleBox.Text = score.Title;
@@ -164,9 +165,12 @@ public partial class TranscriptionWindow : Window
                     SourcePage = maatra.SourcePage,
                     Section = RanjishHiSahiDraft.DisplaySectionName(section.Name),
                     StartBeat = startBeat,
-                    Swaras = MaatraNotation.Format(maatra.Swaras),
+                    Swaras = maatra.Swaras.Count == 0 ? string.Empty : MaatraNotation.Format(maatra.Swaras),
+                    IsBlank = maatra.Swaras.Count == 0,
+                    BorrowedFrom = maatra.BorrowedFrom is int source ? _rows[source] : null,
                     Lyrics = maatra.Lyrics,
                     ShowGrouping = maatra.ShowGrouping,
+                    StartsPrintedLine = maatra.StartsPrintedLine,
                     Annotation = maatra.Annotation
                 });
 
@@ -212,9 +216,14 @@ public partial class TranscriptionWindow : Window
 
             try
             {
-                maatras.Add(new ScoreMaatra(row.SourcePage, MaatraNotation.Parse(row.Swaras), row.Lyrics, row.Annotation)
+                IReadOnlyList<SwaraEvent> events = row.IsBlank && string.IsNullOrWhiteSpace(row.Swaras)
+                    ? [] : MaatraNotation.Parse(row.Swaras);
+                maatras.Add(new ScoreMaatra(row.SourcePage, events, row.Lyrics, row.Annotation)
                 {
-                    ShowGrouping = row.ShowGrouping
+                    ShowGrouping = row.ShowGrouping,
+                    StartsPrintedLine = row.StartsPrintedLine,
+                    BorrowedFrom = events.Count == 0 && row.BorrowedFrom is TranscriptionRow source
+                        ? _rows.IndexOf(source) : null
                 });
             }
             catch (FormatException exception)
@@ -250,11 +259,16 @@ public partial class TranscriptionWindow : Window
         {
             SourcePage = SourcePages.SelectedIndex + 1,
             Section = neighbor?.Section ?? string.Empty,
+            StartsPrintedLine = index < _rows.Count ? neighbor?.StartsPrintedLine : null,
             StartBeat = neighbor is null ? 1 : index < _rows.Count ? neighbor.StartBeat : null
         };
 
         if (index < _rows.Count && neighbor is not null)
+        {
             neighbor.StartBeat = null;
+            if (neighbor.StartsPrintedLine == true)
+                neighbor.StartsPrintedLine = false;
+        }
 
         _rows.Insert(index, row);
         MaatraGrid.Items.Refresh();
@@ -274,12 +288,24 @@ public partial class TranscriptionWindow : Window
 
         int index = MaatraGrid.SelectedIndex;
         TranscriptionRow removed = _rows[index];
+        if (_rows.Any(row => row.BorrowedFrom == removed))
+        {
+            StatusText.Text = "Another maatra borrows the swaras from this row. Clear that link before removing it.";
+            return;
+        }
+
         if (_passes.Any(pass => pass.First == removed || pass.Last == removed))
         {
             StatusText.Text = "This maatra marks the start or end of a repeat pass. Its notes can still be edited.";
             return;
         }
         _rows.RemoveAt(index);
+
+        if (removed.StartsPrintedLine == true && index < _rows.Count
+            && string.Equals(removed.Section, _rows[index].Section, StringComparison.OrdinalIgnoreCase))
+        {
+            _rows[index].StartsPrintedLine = true;
+        }
 
         if (removed.StartBeat.HasValue && index < _rows.Count && _rows[index].StartBeat is null
             && string.Equals(removed.Section, _rows[index].Section, StringComparison.OrdinalIgnoreCase))

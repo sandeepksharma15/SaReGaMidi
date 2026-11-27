@@ -31,6 +31,12 @@ public sealed class TranscriptionRow : INotifyPropertyChanged
 
     public bool ShowGrouping { get; set; }
 
+    public bool? StartsPrintedLine { get; set; }
+
+    public bool IsBlank { get; set; }
+
+    internal TranscriptionRow? BorrowedFrom { get; set; }
+
     public string Annotation { get; set; } = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;

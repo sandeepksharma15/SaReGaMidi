@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
@@ -83,11 +84,40 @@ internal sealed class ScoreFile(string folderPath, int pageCount)
                     throw new InvalidDataException($"Each maatra needs a valid reference to source pages 1 to {pageCount}.");
                 }
 
-                MaatraNotation.Validate(maatra.Swaras);
+                if (maatra.Swaras.Count > 0)
+                    MaatraNotation.Validate(maatra.Swaras);
             }
         }
 
-        int maatraCount = score.Sections.Sum(section => section.Maatras.Count);
+        ScoreMaatra[] written = score.Sections.SelectMany(section => section.Maatras).ToArray();
+        int maatraCount = written.Length;
+        Dictionary<Guid, int> anchors = [];
+        List<(Guid Target, int Position)> meends = [];
+        int position = 0;
+
+        for (int index = 0; index < maatraCount; index++)
+        {
+            ScoreMaatra maatra = written[index];
+            if (maatra.BorrowedFrom is int source && (maatra.Swaras.Count != 0
+                || source < 0 || source >= index || written[source].Swaras.Count == 0))
+            {
+                throw new InvalidDataException($"Maatra {index + 1} must borrow from an earlier written maatra with swaras.");
+            }
+
+            foreach (SwaraEvent swara in maatra.Swaras)
+            {
+                if (swara.AnchorId is Guid anchor && !anchors.TryAdd(anchor, position))
+                    throw new InvalidDataException($"Maatra {index + 1} has a duplicate meend anchor.");
+
+                if (swara.MeendTargetId is Guid target)
+                    meends.Add((target, position));
+
+                position++;
+            }
+        }
+
+        if (meends.Any(link => !anchors.TryGetValue(link.Target, out int end) || end <= link.Position))
+            throw new InvalidDataException("A meend must end on a later written swara. Repair or clear the link before saving.");
         if (score.Passes is null || score.Passes.Any(pass => pass is null
             || string.IsNullOrWhiteSpace(pass.Name) || pass.StartMaatra < 0
             || pass.MaatraCount <= 0 || pass.StartMaatra > maatraCount - pass.MaatraCount))

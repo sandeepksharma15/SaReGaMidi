@@ -10,7 +10,8 @@ namespace SaReGaMidi.UI;
 
 internal sealed class MaatraDisplay : StackPanel
 {
-    internal MaatraDisplay(IReadOnlyList<SwaraEvent> events, string lyrics, bool grouped, bool preview = false)
+    internal MaatraDisplay(IReadOnlyList<SwaraEvent> events, string lyrics, bool grouped, bool preview = false,
+        bool blank = false)
     {
         Grid notes = new() { HorizontalAlignment = HorizontalAlignment.Center };
         StackPanel glyphs = new() { Orientation = Orientation.Horizontal, Height = 32 };
@@ -23,7 +24,7 @@ internal sealed class MaatraDisplay : StackPanel
             Anchors.Add(new MeendAnchor(note, glyph));
         }
 
-        if (events.Count == 0)
+        if (events.Count == 0 && !blank)
             glyphs.Children.Add(new TextBlock { Text = "+", VerticalAlignment = VerticalAlignment.Center });
 
         if (preview)
@@ -60,18 +61,23 @@ internal sealed class MaatraDisplay : StackPanel
 
 internal sealed record MeendAnchor(SwaraEvent Note, FrameworkElement Glyph);
 
+internal sealed record MeendSegment(MeendAnchor? Start, MeendAnchor? End);
+
 internal sealed class MeendLayer : FrameworkElement
 {
     private readonly DrawingVisual _drawing = new();
     private readonly IReadOnlyList<MeendAnchor> _anchors;
     private readonly bool _showOutgoing;
     private readonly bool _showIncoming;
+    private readonly IReadOnlyList<MeendSegment> _segments;
 
-    internal MeendLayer(IReadOnlyList<MeendAnchor> anchors, bool showOutgoing, bool showIncoming = false)
+    internal MeendLayer(IReadOnlyList<MeendAnchor> anchors, bool showOutgoing, bool showIncoming = false,
+        IReadOnlyList<MeendSegment>? segments = null)
     {
         _anchors = anchors;
         _showOutgoing = showOutgoing;
         _showIncoming = showIncoming;
+        _segments = segments ?? [];
         IsHitTestVisible = false;
         AddVisualChild(_drawing);
     }
@@ -94,7 +100,7 @@ internal sealed class MeendLayer : FrameworkElement
 
             if (anchor.Note.Kind == SwaraEventKind.Note)
             {
-                Point end = anchor.Glyph.TranslatePoint(new Point(anchor.Glyph.ActualWidth / 2, 0), this);
+                Point end = GetPoint(anchor);
                 if (start is Point origin)
                     DrawCurve(drawing, pen, origin, end);
                 else if (incoming)
@@ -113,8 +119,20 @@ internal sealed class MeendLayer : FrameworkElement
         if (_showOutgoing && start is Point last)
             DrawCurve(drawing, pen, last, new Point(finalSize.Width, last.Y - 4));
 
+        foreach (MeendSegment segment in _segments)
+        {
+            Point? first = segment.Start is MeendAnchor from ? GetPoint(from) : null;
+            Point? lastPoint = segment.End is MeendAnchor to ? GetPoint(to) : null;
+            DrawCurve(drawing, pen,
+                first ?? new Point(0, (lastPoint?.Y ?? 20) - 4),
+                lastPoint ?? new Point(finalSize.Width, (first?.Y ?? 20) - 4));
+        }
+
         return finalSize;
     }
+
+    private Point GetPoint(MeendAnchor anchor)
+        => anchor.Glyph.TranslatePoint(new Point(anchor.Glyph.ActualWidth / 2, 0), this);
 
     private static void DrawCurve(DrawingContext drawing, Pen pen, Point start, Point end)
     {

@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Text.Json.Serialization;
 
 namespace SaReGaMidi.Music.Score;
 
@@ -16,8 +18,32 @@ public sealed record ScoreSection(string Name, int StartBeat, IReadOnlyList<Scor
 /// <summary>A maatra and its separate lyric row. A source page is a one-based reference into the workspace manifest.</summary>
 public sealed record ScoreMaatra(int SourcePage, IReadOnlyList<SwaraEvent> Swaras, string Lyrics, string Annotation)
 {
+    public const char LyricContinuationSign = 'S';
+
     public bool ShowGrouping { get; init; }
+
+    /// <summary>Starts a new printed line without changing the rhythm or performance order.</summary>
+    public bool? StartsPrintedLine { get; init; }
+
+    /// <summary>Zero-based written maatra supplying the swaras of an intentionally blank cell.</summary>
+    public int? BorrowedFrom { get; init; }
+
+    /// <summary>Non-timed lyric continuation markers, indexed by character position in Lyrics.</summary>
+    [JsonIgnore]
+    public IEnumerable<LyricMarker> LyricMarkers
+    {
+        get
+        {
+            for (int index = 0; index < Lyrics.Length; index++)
+            {
+                if (Lyrics[index] == LyricContinuationSign)
+                    yield return new LyricMarker(index, SwaraEventKind.LyricalContinuation);
+            }
+        }
+    }
 }
+
+public readonly record struct LyricMarker(int TextOffset, SwaraEventKind Kind);
 
 public sealed record SwaraEvent(SwaraEventKind Kind, SwaraPitch? Pitch, MaatraFraction Duration)
 {
@@ -26,6 +52,10 @@ public sealed record SwaraEvent(SwaraEventKind Kind, SwaraPitch? Pitch, MaatraFr
     public SwaraPitch? KanSwara { get; init; }
 
     public bool MeendToNext { get; init; }
+
+    public Guid? AnchorId { get; init; }
+
+    public Guid? MeendTargetId { get; init; }
 }
 
 public readonly record struct MaatraFraction(int Numerator, int Denominator);
@@ -35,5 +65,6 @@ public enum SwaraEventKind
     Note,
     Sustain,
     Silence,
-    Unclear
+    Unclear,
+    LyricalContinuation
 }

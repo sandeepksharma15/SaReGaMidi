@@ -20,6 +20,43 @@ internal static class RanjishHiSahiDraft
         _ => name
     };
 
+    internal static CompositionScore RestorePrintedLines(CompositionScore score)
+    {
+        if (!string.Equals(score.TaalName, "Dadra", StringComparison.OrdinalIgnoreCase)
+            || score.Sections.Count != 2
+            || DisplaySectionName(score.Sections[0].Name) != "स्थायी"
+            || DisplaySectionName(score.Sections[1].Name) != "अंतरा"
+            || score.Sections[0].StartBeat != 5 || score.Sections[1].StartBeat != 5
+            || score.Sections[0].Maatras.Count != 56 || score.Sections[1].Maatras.Count != 74
+            || score.Sections.SelectMany(section => section.Maatras).Any(maatra => maatra.StartsPrintedLine.HasValue))
+        {
+            return score;
+        }
+
+        IReadOnlyList<ScoreMaatra> sthayi = score.Sections[0].Maatras;
+        bool knownPass = score.Passes.Any(pass => pass.StartMaatra == 30 && pass.MaatraCount == 26);
+        bool knownCue = sthayi[26].Annotation.StartsWith("The first three melody cells on this printed line are blank.",
+            StringComparison.Ordinal);
+        if ((!knownPass && !knownCue) || sthayi[25].SourcePage != 2 || sthayi[30].SourcePage != 2)
+            return score;
+
+        return score with
+        {
+            Sections =
+            [
+                WithPrintedLines(score.Sections[0], [0, 8, 20, 26, 38, 50]),
+                WithPrintedLines(score.Sections[1], [0, 8, 20, 32, 44, 56, 68])
+            ]
+        };
+    }
+
+    private static ScoreSection WithPrintedLines(ScoreSection section, int[] starts)
+        => section with
+        {
+            Maatras = section.Maatras.Select((maatra, index) =>
+                maatra with { StartsPrintedLine = starts.Contains(index) }).ToArray()
+        };
+
     internal static CompositionScore RestorePasses(CompositionScore score)
     {
         if (score.Passes.Count != 0 || !string.Equals(score.TaalName, "Dadra", StringComparison.OrdinalIgnoreCase)
@@ -43,6 +80,39 @@ internal static class RanjishHiSahiDraft
 
     private static IReadOnlyList<ScorePass> BuildPasses(int upperPickup, int lowerPickup, int sthayiEnd)
         => [new("पहली बार", 0, upperPickup), new("दूसरी बार", lowerPickup, sthayiEnd - lowerPickup)];
+
+    internal static CompositionScore RestoreBorrowedPickup(CompositionScore score)
+    {
+        if (score.Passes.Count != 2 || score.Sections.Count == 0
+            || DisplaySectionName(score.Sections[0].Name) != "स्थायी")
+        {
+            return score;
+        }
+
+        ScorePass second = score.Passes[1];
+        ScoreSection sthayi = score.Sections[0];
+        int lower = second.StartMaatra - 4;
+        int upper = lower - 6;
+        if (upper < 0 || second.StartMaatra + second.MaatraCount != sthayi.Maatras.Count
+            || !sthayi.Maatras[lower].StartsPrintedLine.GetValueOrDefault()
+            || (sthayi.StartBeat - 1 + lower) % 6 != 0
+            || sthayi.Maatras.Skip(lower).Take(3).Any(maatra =>
+                maatra.Swaras.Count != 1 || maatra.Swaras[0].Kind != SwaraEventKind.Unclear)
+            || sthayi.Maatras.Skip(upper).Take(3).Any(maatra => maatra.Swaras.Count == 0))
+        {
+            return score;
+        }
+
+        ScoreMaatra[] maatras = sthayi.Maatras.ToArray();
+        for (int beat = 0; beat < 3; beat++)
+            maatras[lower + beat] = maatras[lower + beat] with { Swaras = [], BorrowedFrom = upper + beat };
+
+        return score with
+        {
+            Sections = new[] { sthayi with { Maatras = maatras } }.Concat(score.Sections.Skip(1)).ToArray(),
+            Passes = [score.Passes[0], second with { StartMaatra = lower, MaatraCount = second.MaatraCount + 4 }]
+        };
+    }
 
     internal static CompositionScore Create()
     {
@@ -111,11 +181,11 @@ internal static class RanjishHiSahiDraft
             "आ;S;SS;SS;रं;S",
             (5, "Printed return cue. Remaining verses are to follow the same pattern. Confirm arrangement before export."));
 
-        return new CompositionScore("रंजिश ही सही", "Dadra",
+        return RestoreBorrowedPickup(new CompositionScore("रंजिश ही सही", "Dadra",
             [new ScoreSection("स्थायी", 5, sthayi.AsReadOnly()), new ScoreSection("अंतरा", 5, antara.AsReadOnly())])
         {
             Passes = BuildPasses(upperPickup, lowerPickup, sthayi.Count)
-        };
+        });
     }
 
     private static void AddLine(List<ScoreMaatra> destination, int page, string swaras, string lyrics,
@@ -130,7 +200,10 @@ internal static class RanjishHiSahiDraft
         {
             int annotation = Array.FindIndex(notes, note => note.Index == index);
             string text = annotation >= 0 ? notes[annotation].Text : string.Empty;
-            destination.Add(new ScoreMaatra(page, MaatraNotation.Parse(swaraCells[index]), lyricCells[index], text));
+            destination.Add(new ScoreMaatra(page, MaatraNotation.Parse(swaraCells[index]), lyricCells[index], text)
+            {
+                StartsPrintedLine = index == 0
+            });
         }
     }
 }

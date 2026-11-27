@@ -59,10 +59,13 @@ public static class MaatraNotation
 
         foreach (SwaraEvent note in events)
         {
-            if (note is null || !Enum.IsDefined(note.Kind)
+            if (note is null || !Enum.IsDefined(note.Kind) || note.Kind == SwaraEventKind.LyricalContinuation
                 || (note.Kind == SwaraEventKind.Note) != note.Pitch.HasValue
                 || (note.Pitch is SwaraPitch pitch && !IsPitchValid(pitch))
-                || (note.Pitch is null && (note.Khatka || note.KanSwara.HasValue || note.MeendToNext))
+                || (note.Pitch is null && (note.Khatka || note.KanSwara.HasValue || note.MeendToNext
+                    || note.AnchorId.HasValue || note.MeendTargetId.HasValue))
+                || (note.MeendToNext && note.MeendTargetId.HasValue)
+                || note.AnchorId == Guid.Empty || note.MeendTargetId == Guid.Empty
                 || (note.KanSwara is SwaraPitch kan && !IsPitchValid(kan)))
             {
                 throw new FormatException("The maatra contains an invalid swara event.");
@@ -95,9 +98,12 @@ public static class MaatraNotation
                 return new SwaraEvent(SwaraEventKind.Unclear, null, duration);
         }
 
-        bool meend = symbol.EndsWith('~');
-        if (meend)
-            symbol = symbol[..^1];
+        string[] anchorParts = symbol.Split('#', 2);
+        Guid? anchorId = anchorParts.Length == 2 ? ParseAnchor(anchorParts[1]) : null;
+        string[] meendParts = anchorParts[0].Split('~', 2);
+        Guid? targetId = meendParts.Length == 2 && meendParts[1].Length > 0 ? ParseAnchor(meendParts[1]) : null;
+        bool meend = meendParts.Length == 2 && !targetId.HasValue;
+        symbol = meendParts[0];
 
         string[] pitches = symbol.Split('>', 2);
         string main = pitches[^1];
@@ -109,7 +115,9 @@ public static class MaatraNotation
         {
             Khatka = khatka,
             KanSwara = pitches.Length == 2 ? ParsePitch(pitches[0]) : null,
-            MeendToNext = meend
+            MeendToNext = meend,
+            AnchorId = anchorId,
+            MeendTargetId = targetId
         };
     }
 
@@ -139,8 +147,17 @@ public static class MaatraNotation
         if (note.KanSwara is SwaraPitch kan)
             main = $"{FormatPitch(kan)}>{main}";
 
-        return note.MeendToNext ? $"{main}~" : main;
+        if (note.MeendTargetId is Guid target)
+            main = $"{main}~{target:N}";
+        else if (note.MeendToNext)
+            main += "~";
+
+        return note.AnchorId is Guid anchor ? $"{main}#{anchor:N}" : main;
     }
+
+    private static Guid ParseAnchor(string text)
+        => Guid.TryParseExact(text, "N", out Guid id) && id != Guid.Empty
+            ? id : throw new FormatException("Invalid meend anchor.");
 
     private static string FormatPitch(SwaraPitch pitch)
     {

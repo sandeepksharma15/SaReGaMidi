@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
@@ -15,6 +16,8 @@ public partial class MaatraEditor : Window
 
     private readonly TranscriptionRow _row;
     private readonly int _cycleLength;
+    private readonly TranscriptionRow? _earlierBeat;
+    private readonly IReadOnlyList<MeendDestination> _destinations;
     private readonly ObservableCollection<EventEntry> _events = [];
     private EventEntry? _kanTarget;
 
@@ -22,10 +25,13 @@ public partial class MaatraEditor : Window
 
     #region Constructors
 
-    internal MaatraEditor(TranscriptionRow row, int pageCount, int cycleLength)
+    internal MaatraEditor(TranscriptionRow row, int pageCount, int cycleLength,
+        TranscriptionRow? earlierBeat, IReadOnlyList<MeendDestination> destinations)
     {
         _row = row;
         _cycleLength = cycleLength;
+        _earlierBeat = earlierBeat;
+        _destinations = destinations;
         InitializeComponent();
         SectionBox.Text = row.Section;
         StartBeatBox.Text = row.StartBeat?.ToString() ?? string.Empty;
@@ -34,12 +40,21 @@ public partial class MaatraEditor : Window
         LyricsBox.Text = row.Lyrics;
         NotesBox.Text = row.Annotation;
         GroupBox.IsChecked = row.ShowGrouping;
+        BlankBox.IsChecked = row.IsBlank;
+        BorrowBox.IsChecked = row.BorrowedFrom is not null;
+        WholeBlankBox.IsChecked = row.IsBlank && string.IsNullOrEmpty(row.Lyrics);
+        MeendDestinationBox.ItemsSource = destinations;
+        MeendDestinationBox.IsEnabled = destinations.Count > 0;
+        PrintedLineBox.IsChecked = row.StartsPrintedLine == true;
         EventsList.ItemsSource = _events;
         SaptakBox.ItemsSource = Enum.GetValues<Saptak>();
         SaptakBox.SelectedItem = Saptak.Madhya;
 
         if (string.IsNullOrWhiteSpace(row.Swaras))
+        {
+            UpdatePreview();
             return;
+        }
 
         try
         {
@@ -111,6 +126,8 @@ public partial class MaatraEditor : Window
     private void AddEvent(SwaraEvent note)
     {
         ClearKanSelection();
+        BlankBox.IsChecked = false;
+        WholeBlankBox.IsChecked = false;
         EventEntry entry = new(note, string.Empty);
         _events.Add(entry);
         EventsList.SelectedItem = entry;
@@ -141,7 +158,49 @@ public partial class MaatraEditor : Window
     {
         ClearKanSelection();
         if (SelectedPitch() is EventEntry entry)
-            ReplaceEvent(entry, entry.Note with { MeendToNext = !entry.Note.MeendToNext });
+        {
+            bool hasMeend = entry.Note.MeendToNext || entry.Note.MeendTargetId.HasValue;
+            ReplaceEvent(entry, entry.Note with { MeendToNext = !hasMeend, MeendTargetId = null });
+        }
+    }
+
+    private void SetMeend_Click(object sender, RoutedEventArgs e)
+    {
+        ClearKanSelection();
+        if (SelectedPitch() is not EventEntry entry)
+            return;
+
+        if (MeendDestinationBox.SelectedItem is not MeendDestination target)
+        {
+            Message.Text = "Choose a later swara from the meend list.";
+            return;
+        }
+
+        ReplaceEvent(entry, entry.Note with { MeendToNext = false, MeendTargetId = target.Id });
+        Message.Text = $"Meend ends at {target.Label}. Use Meend to next / clear to remove it.";
+    }
+
+    private void MeendDistance_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (MeendDestinationBox is null)
+            return;
+
+        MeendDestination? selected = MeendDestinationBox.SelectedItem as MeendDestination;
+        string input = MeendDistanceBox.Text.Trim();
+        IReadOnlyList<MeendDestination> matches = _destinations;
+        if (input.Length > 0)
+        {
+            matches = int.TryParse(input, out int distance) && distance > 0
+                ? _destinations.Where(destination => destination.Distance == distance).ToArray()
+                : [];
+        }
+
+        MeendDestinationBox.ItemsSource = matches;
+        MeendDestinationBox.IsEnabled = matches.Count > 0;
+        MeendDestinationBox.SelectedItem = matches.Count == 1 ? matches[0] : matches.FirstOrDefault(note => note == selected);
+        Message.Text = input.Length > 0 && matches.Count == 0
+            ? "Enter a positive maatra distance that leads to a written swara."
+            : string.Empty;
     }
 
     private void Kan_Click(object sender, RoutedEventArgs e)
@@ -197,8 +256,9 @@ public partial class MaatraEditor : Window
 
     private void ContinueLyric_Click(object sender, RoutedEventArgs e)
     {
+        WholeBlankBox.IsChecked = false;
         int caret = LyricsBox.SelectionStart;
-        LyricsBox.SelectedText = "S";
+        LyricsBox.SelectedText = ScoreMaatra.LyricContinuationSign.ToString();
         LyricsBox.CaretIndex = caret + 1;
         LyricsBox.Focus();
     }
@@ -208,9 +268,15 @@ public partial class MaatraEditor : Window
 
     private void UpdatePreview()
     {
-        if (Preview is not null && LyricsBox is not null)
-            Preview.Content = new MaatraDisplay(_events.Select(entry => entry.Note).ToArray(),
-                LyricsBox.Text, GroupBox.IsChecked == true, preview: true);
+        if (Preview is null || LyricsBox is null || GroupBox is null)
+            return;
+
+        bool wholeBlank = WholeBlankBox.IsChecked == true;
+        bool blank = wholeBlank || BlankBox.IsChecked == true;
+        BorrowBox.IsEnabled = blank && _earlierBeat is not null;
+        LyricsBox.IsEnabled = !wholeBlank;
+        Preview.Content = new MaatraDisplay(blank ? [] : _events.Select(entry => entry.Note).ToArray(),
+            wholeBlank ? string.Empty : LyricsBox.Text, GroupBox.IsChecked == true, preview: true, blank: blank);
     }
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
@@ -237,13 +303,28 @@ public partial class MaatraEditor : Window
 
         try
         {
-            _row.Swaras = MaatraNotation.Format(MaatraNotation.Parse(text));
+            bool wholeBlank = WholeBlankBox.IsChecked == true;
+            bool blank = wholeBlank || BlankBox.IsChecked == true;
+            IReadOnlyList<SwaraEvent> swaras = blank ? [] : MaatraNotation.Parse(text);
+            foreach (MeendDestination target in _destinations.Where(target => swaras.Any(note => note.MeendTargetId == target.Id)))
+            {
+                SwaraEvent[] targetSwaras = MaatraNotation.Parse(target.Row.Swaras).ToArray();
+                targetSwaras[target.NoteIndex] = targetSwaras[target.NoteIndex] with { AnchorId = target.Id };
+                target.Row.Swaras = MaatraNotation.Format(targetSwaras);
+            }
+
+            _row.Swaras = blank ? string.Empty : MaatraNotation.Format(swaras);
+            _row.IsBlank = blank;
+            _row.BorrowedFrom = blank && BorrowBox.IsChecked == true ? _earlierBeat : null;
             _row.Section = SectionBox.Text.Trim();
             _row.StartBeat = startBeat;
             _row.SourcePage = page;
-            _row.Lyrics = LyricsBox.Text;
+            _row.Lyrics = wholeBlank ? string.Empty : LyricsBox.Text;
             _row.Annotation = NotesBox.Text;
             _row.ShowGrouping = GroupBox.IsChecked == true;
+            bool startsPrintedLine = PrintedLineBox.IsChecked == true;
+            if (startsPrintedLine != (_row.StartsPrintedLine == true))
+                _row.StartsPrintedLine = startsPrintedLine;
             DialogResult = true;
         }
         catch (FormatException exception)

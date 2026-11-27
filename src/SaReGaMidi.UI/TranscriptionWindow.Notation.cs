@@ -95,7 +95,7 @@ public partial class TranscriptionWindow
                 || !string.Equals(section, row.Section, StringComparison.OrdinalIgnoreCase);
             int beat = int.TryParse(row.Beat, out int cycleBeat) ? cycleBeat : 0;
 
-            if (newSection || columns >= lineLength)
+            if (newSection || row.StartsPrintedLine == true || columns >= lineLength)
             {
                 if (newSection && !string.IsNullOrWhiteSpace(row.Section))
                 {
@@ -115,7 +115,7 @@ public partial class TranscriptionWindow
                 lines.Add((line, anchors, newSection));
                 columns = 0;
 
-                if (newSection && beat > 1)
+                if ((newSection || row.StartsPrintedLine == true) && beat > 1)
                 {
                     for (; columns < beat - 1; columns++)
                         AddNotationColumn(line, columns);
@@ -124,11 +124,41 @@ public partial class TranscriptionWindow
 
             marks.TryGetValue(beat, out string? mark);
             AddNotationColumn(line, columns);
-            FrameworkElement cell = CreateNotationCell(row, mark, index, anchors);
+            FrameworkElement cell = CreateNotationCell(row, mark, index, anchors, pass?.First is not null);
             Grid.SetColumn(cell, columns);
             line.Children.Add(cell);
             columns++;
             section = row.Section;
+        }
+
+        Dictionary<Guid, (MeendAnchor Anchor, int Line)> endpoints = [];
+        List<MeendSegment>[] spans = new List<MeendSegment>[lines.Count];
+        for (int index = 0; index < lines.Count; index++)
+        {
+            spans[index] = [];
+            foreach (MeendAnchor anchor in lines[index].Anchors)
+            {
+                if (anchor.Note.AnchorId is Guid id)
+                    endpoints.TryAdd(id, (anchor, index));
+            }
+        }
+
+        for (int index = 0; index < lines.Count; index++)
+        {
+            foreach (MeendAnchor anchor in lines[index].Anchors)
+            {
+                if (anchor.Note.MeendTargetId is not Guid target
+                    || !endpoints.TryGetValue(target, out var end) || end.Line < index)
+                {
+                    continue;
+                }
+
+                for (int lineIndex = index; lineIndex <= end.Line; lineIndex++)
+                {
+                    spans[lineIndex].Add(new MeendSegment(
+                        lineIndex == index ? anchor : null, lineIndex == end.Line ? end.Anchor : null));
+                }
+            }
         }
 
         bool incoming = false;
@@ -138,9 +168,9 @@ public partial class TranscriptionWindow
             bool outgoing = index + 1 < lines.Count && !lines[index + 1].StartsSection
                 && lineAnchors.LastOrDefault(anchor => anchor.Note.Kind != SwaraEventKind.Sustain)?.Note.MeendToNext == true
                 && lines[index + 1].Anchors.FirstOrDefault(anchor => anchor.Note.Kind != SwaraEventKind.Sustain)?.Note.Kind == SwaraEventKind.Note;
-            if (incoming || outgoing || lineAnchors.Any(anchor => anchor.Note.MeendToNext))
+            if (incoming || outgoing || spans[index].Count > 0 || lineAnchors.Any(anchor => anchor.Note.MeendToNext))
             {
-                MeendLayer layer = new(lineAnchors, outgoing, incoming && !startsSection);
+                MeendLayer layer = new(lineAnchors, outgoing, incoming && !startsSection, spans[index]);
                 Grid.SetColumnSpan(layer, grid.ColumnDefinitions.Count);
                 grid.Children.Add(layer);
             }
@@ -157,7 +187,8 @@ public partial class TranscriptionWindow
             SharedSizeGroup = $"Maatra{index}"
         });
 
-    private FrameworkElement CreateNotationCell(TranscriptionRow row, string? mark, int index, List<MeendAnchor> anchors)
+    private FrameworkElement CreateNotationCell(TranscriptionRow row, string? mark, int index,
+        List<MeendAnchor> anchors, bool performingPass)
     {
         StackPanel content = new();
         content.Children.Add(new TextBlock
@@ -167,17 +198,23 @@ public partial class TranscriptionWindow
             FontSize = 12
         });
 
+        TranscriptionRow displayed = performingPass && row.IsBlank && string.IsNullOrWhiteSpace(row.Swaras)
+            ? row.BorrowedFrom ?? row : row;
+        bool blank = displayed.IsBlank && string.IsNullOrWhiteSpace(displayed.Swaras);
         IReadOnlyList<SwaraEvent> events;
         try
         {
-            events = MaatraNotation.Parse(row.Swaras);
+            events = blank ? [] : MaatraNotation.Parse(displayed.Swaras);
         }
         catch (FormatException)
         {
-            events = string.IsNullOrWhiteSpace(row.Swaras) ? [] : MaatraNotation.Parse("?");
+            events = string.IsNullOrWhiteSpace(displayed.Swaras) ? [] : MaatraNotation.Parse("?");
         }
 
-        MaatraDisplay display = new(events, row.Lyrics, row.ShowGrouping) { Margin = new Thickness(0, 6, 0, 0) };
+        MaatraDisplay display = new(events, row.Lyrics, displayed.ShowGrouping, blank: blank)
+        {
+            Margin = new Thickness(0, 6, 0, 0)
+        };
         content.Children.Add(display);
         anchors.AddRange(display.Anchors);
 
@@ -187,7 +224,9 @@ public partial class TranscriptionWindow
             MinWidth = 52,
             Padding = new Thickness(3, 2, 3, 3),
             Tag = index,
-            ToolTip = string.IsNullOrWhiteSpace(row.Annotation) ? "Edit maatra" : row.Annotation
+            ToolTip = row.BorrowedFrom is TranscriptionRow source && blank
+                ? $"Blank in print. Uses the swaras from maatra {_rows.IndexOf(source) + 1} during the pass."
+                : string.IsNullOrWhiteSpace(row.Annotation) ? "Edit maatra" : row.Annotation
         };
         cell.SetResourceReference(StyleProperty, "NotationCell");
         if (MaatraGrid.SelectedIndex == index)
@@ -221,7 +260,12 @@ public partial class TranscriptionWindow
         }
 
         MaatraGrid.SelectedIndex = index;
-        MaatraEditor editor = new(_rows[index], _workspace.Pages.Count, taal.MaatraCount) { Owner = this };
+        TranscriptionRow row = _rows[index];
+        TranscriptionRow? earlierBeat = _rows.Take(index).LastOrDefault(earlier => earlier.Beat == row.Beat
+            && string.Equals(earlier.Section, row.Section, StringComparison.OrdinalIgnoreCase)
+            && !earlier.IsBlank && !string.IsNullOrWhiteSpace(earlier.Swaras));
+        MaatraEditor editor = new(row, _workspace.Pages.Count, taal.MaatraCount,
+            row.BorrowedFrom ?? earlierBeat, GetMeendDestinations(index)) { Owner = this };
         if (editor.ShowDialog() == true)
         {
             MaatraGrid.Items.Refresh();
@@ -232,5 +276,37 @@ public partial class TranscriptionWindow
         UpdateBeats();
     }
 
+    private IReadOnlyList<MeendDestination> GetMeendDestinations(int index)
+    {
+        List<MeendDestination> destinations = [];
+        for (int later = index + 1; later < _rows.Count; later++)
+        {
+            TranscriptionRow row = _rows[later];
+            IReadOnlyList<SwaraEvent> swaras;
+            try
+            {
+                swaras = row.IsBlank ? [] : MaatraNotation.Parse(row.Swaras);
+            }
+            catch (FormatException)
+            {
+                continue;
+            }
+
+            for (int noteIndex = 0; noteIndex < swaras.Count; noteIndex++)
+            {
+                if (swaras[noteIndex].Pitch is not { } pitch)
+                    continue;
+
+                Guid id = swaras[noteIndex].AnchorId ?? Guid.NewGuid();
+                destinations.Add(new MeendDestination(row, noteIndex, id, later - index,
+                    $"Maatra {later + 1} · {pitch.Swara} ({noteIndex + 1})"));
+            }
+        }
+
+        return destinations;
+    }
+
     private sealed record PassSelection(string Name, TranscriptionRow? First, TranscriptionRow? Last);
 }
+
+internal sealed record MeendDestination(TranscriptionRow Row, int NoteIndex, Guid Id, int Distance, string Label);

@@ -53,8 +53,23 @@
                 <Button Content="Remove" Click="Remove_Click" Margin="0,0,6,0" />
                 <Button Content="Khatka" Click="Khatka_Click" Margin="0,0,6,0" />
                 <Button x:Name="KanButton" Content="Kan swar" Click="Kan_Click" Margin="0,0,6,0" />
-                <Button Content="Meend to next" Click="Meend_Click" />
+                <Button Content="Meend to next / clear" Click="Meend_Click" />
             </WrapPanel>
+            <DockPanel Margin="0,0,0,6">
+                <Button DockPanel.Dock="Right" Content="Set meend" Click="SetMeend_Click" Margin="6,0,0,0" />
+                <Label DockPanel.Dock="Left" Content="_Maatras ahead" Target="{Binding ElementName=MeendDistanceBox}" />
+                <TextBox x:Name="MeendDistanceBox" DockPanel.Dock="Left" Width="45" Margin="0,0,6,0"
+                         ToolTip="Leave blank for all later swaras" TextChanged="MeendDistance_Changed" />
+                <ComboBox x:Name="MeendDestinationBox" DisplayMemberPath="Label"
+                          AutomationProperties.Name="Meend destination" />
+            </DockPanel>
+            <CheckBox x:Name="BlankBox" Content="Leave swara row blank (keep the beat)"
+                      Checked="Preview_Changed" Unchecked="Preview_Changed" Margin="0,0,0,6" />
+            <CheckBox x:Name="WholeBlankBox" Content="Leave the whole maatra blank (swaras and lyrics)"
+                      Checked="Preview_Changed" Unchecked="Preview_Changed" Margin="0,0,0,6" />
+            <CheckBox x:Name="BorrowBox" Content="Use the earlier swaras on this beat during the pass"
+                      Margin="16,0,0,6" />
+            <CheckBox x:Name="PrintedLineBox" Content="Start a new printed line" Margin="0,0,0,6" />
             <CheckBox x:Name="GroupBox" Content="Group swaras under one maatra" Checked="Preview_Changed"
                       Unchecked="Preview_Changed" Margin="0,0,0,10" />
             <Label Content="_Lyrics" Target="{Binding ElementName=LyricsBox}" Padding="0,0,0,4" />

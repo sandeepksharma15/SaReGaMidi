@@ -88,6 +88,7 @@
                                     <DataGridTextColumn Header="Start beat" Binding="{Binding StartBeat}" Width="80" />
                                     <DataGridTextColumn Header="Beat" Binding="{Binding Beat}" IsReadOnly="True" Width="48" />
                                     <DataGridTextColumn Header="Swaras" Binding="{Binding Swaras}" Width="130" />
+                                    <DataGridCheckBoxColumn Header="New line" Binding="{Binding StartsPrintedLine}" Width="66" />
                                     <DataGridCheckBoxColumn Header="Group" Binding="{Binding ShowGrouping}" Width="56" />
                                     <DataGridTextColumn Header="Lyrics" Binding="{Binding Lyrics}" Width="90" />
                                     <DataGridTextColumn Header="Notes / cues" Binding="{Binding Annotation}" Width="*" MinWidth="135" />
