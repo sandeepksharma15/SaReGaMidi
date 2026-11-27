@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -84,6 +85,14 @@ internal sealed class ScoreFile(string folderPath, int pageCount)
 
                 MaatraNotation.Validate(maatra.Swaras);
             }
+        }
+
+        int maatraCount = score.Sections.Sum(section => section.Maatras.Count);
+        if (score.Passes is null || score.Passes.Any(pass => pass is null
+            || string.IsNullOrWhiteSpace(pass.Name) || pass.StartMaatra < 0
+            || pass.MaatraCount <= 0 || pass.StartMaatra > maatraCount - pass.MaatraCount))
+        {
+            throw new InvalidDataException("A repeat pass points outside the written score.");
         }
     }
 

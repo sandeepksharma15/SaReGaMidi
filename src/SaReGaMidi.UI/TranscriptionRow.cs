@@ -29,6 +29,8 @@ public sealed class TranscriptionRow : INotifyPropertyChanged
 
     public string Lyrics { get; set; } = string.Empty;
 
+    public bool ShowGrouping { get; set; }
+
     public string Annotation { get; set; } = string.Empty;
 
     public event PropertyChangedEventHandler? PropertyChanged;

@@ -19,6 +19,7 @@ public partial class TranscriptionWindow : Window
     private readonly CompositionWorkspace _workspace;
     private readonly ScoreFile _scoreFile;
     private readonly ObservableCollection<TranscriptionRow> _rows = [];
+    private readonly List<PassSelection> _passes = [];
     private bool _busy;
     private bool _canEdit;
     private bool _dirty;
@@ -37,6 +38,7 @@ public partial class TranscriptionWindow : Window
         SourcePages.SelectedIndex = Math.Max(0, selectedPage);
         TaalBox.ItemsSource = TaalCatalog.All;
         MaatraGrid.ItemsSource = _rows;
+        UpdateBeats();
     }
 
     #endregion
@@ -144,6 +146,10 @@ public partial class TranscriptionWindow : Window
 
     private void DisplayScore(CompositionScore score)
     {
+        if (RanjishHiSahiDraft.Matches(_workspace.Pages))
+            score = RanjishHiSahiDraft.RestorePasses(score);
+
+        _passes.Clear();
         TitleBox.Text = score.Title;
         TaalBox.SelectedItem = TaalCatalog.FindByName(score.TaalName);
         _rows.Clear();
@@ -156,10 +162,11 @@ public partial class TranscriptionWindow : Window
                 _rows.Add(new TranscriptionRow
                 {
                     SourcePage = maatra.SourcePage,
-                    Section = section.Name,
+                    Section = RanjishHiSahiDraft.DisplaySectionName(section.Name),
                     StartBeat = startBeat,
                     Swaras = MaatraNotation.Format(maatra.Swaras),
                     Lyrics = maatra.Lyrics,
+                    ShowGrouping = maatra.ShowGrouping,
                     Annotation = maatra.Annotation
                 });
 
@@ -167,8 +174,14 @@ public partial class TranscriptionWindow : Window
             }
         }
 
-        UpdateBeats();
+        foreach (ScorePass pass in score.Passes)
+            _passes.Add(new PassSelection(pass.Name, _rows[pass.StartMaatra], _rows[pass.StartMaatra + pass.MaatraCount - 1]));
+
+        PassBox.ItemsSource = new[] { new PassSelection("Written score", null, null) }.Concat(_passes).ToArray();
+        PassBox.SelectedIndex = 0;
         MaatraGrid.SelectedIndex = 0;
+        UpdatePassControls();
+        UpdateBeats();
     }
 
     private CompositionScore BuildScore()
@@ -199,7 +212,10 @@ public partial class TranscriptionWindow : Window
 
             try
             {
-                maatras.Add(new ScoreMaatra(row.SourcePage, MaatraNotation.Parse(row.Swaras), row.Lyrics, row.Annotation));
+                maatras.Add(new ScoreMaatra(row.SourcePage, MaatraNotation.Parse(row.Swaras), row.Lyrics, row.Annotation)
+                {
+                    ShowGrouping = row.ShowGrouping
+                });
             }
             catch (FormatException exception)
             {
@@ -207,7 +223,15 @@ public partial class TranscriptionWindow : Window
             }
         }
 
-        return new CompositionScore(TitleBox.Text.Trim(), taal.Name, sections.AsReadOnly());
+        return new CompositionScore(TitleBox.Text.Trim(), taal.Name, sections.AsReadOnly())
+        {
+            Passes = _passes.Select(pass =>
+            {
+                int start = _rows.IndexOf(pass.First!);
+                int end = _rows.IndexOf(pass.Last!);
+                return new ScorePass(pass.Name, start, end - start + 1);
+            }).ToArray()
+        };
     }
 
     private void Add_Click(object sender, RoutedEventArgs e)
@@ -238,6 +262,9 @@ public partial class TranscriptionWindow : Window
         MaatraGrid.ScrollIntoView(row);
         MarkEdited();
         UpdateBeats();
+
+        if (ScoreTabs.SelectedIndex == 0)
+            EditMaatra(index);
     }
 
     private void Remove_Click(object sender, RoutedEventArgs e)
@@ -247,6 +274,11 @@ public partial class TranscriptionWindow : Window
 
         int index = MaatraGrid.SelectedIndex;
         TranscriptionRow removed = _rows[index];
+        if (_passes.Any(pass => pass.First == removed || pass.Last == removed))
+        {
+            StatusText.Text = "This maatra marks the start or end of a repeat pass. Its notes can still be edited.";
+            return;
+        }
         _rows.RemoveAt(index);
 
         if (removed.StartBeat.HasValue && index < _rows.Count && _rows[index].StartBeat is null
@@ -321,6 +353,8 @@ public partial class TranscriptionWindow : Window
             beat = beat >= 1 && beat <= cycleLength ? (beat % cycleLength) + 1 : 0;
             section = name;
         }
+
+        RenderNotation();
     }
 
     private void MarkEdited()

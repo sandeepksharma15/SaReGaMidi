@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using SaReGaMidi.Music.Score;
 
 namespace SaReGaMidi.UI;
@@ -12,31 +13,65 @@ internal static class RanjishHiSahiDraft
             && string.Equals(pages[1].OriginalName, "Scan_20261127_105522.jpg", StringComparison.OrdinalIgnoreCase)
             && string.Equals(pages[2].OriginalName, "Scan_20261127_105535.jpg", StringComparison.OrdinalIgnoreCase);
 
+    internal static string DisplaySectionName(string name) => name.ToUpperInvariant() switch
+    {
+        "STHAYI" or "STHAAYI" => "स्थायी",
+        "ANTARA" or "ANTRA" => "अंतरा",
+        _ => name
+    };
+
+    internal static CompositionScore RestorePasses(CompositionScore score)
+    {
+        if (score.Passes.Count != 0 || !string.Equals(score.TaalName, "Dadra", StringComparison.OrdinalIgnoreCase)
+            || score.Sections.Count != 2 || DisplaySectionName(score.Sections[0].Name) != "स्थायी"
+            || score.Sections[0].StartBeat != 5)
+        {
+            return score;
+        }
+
+        IReadOnlyList<ScoreMaatra> sthayi = score.Sections[0].Maatras;
+        int setup = sthayi.ToList().FindIndex(maatra => maatra.Annotation.StartsWith(
+            "The first three melody cells on this printed line are blank.", StringComparison.Ordinal));
+        if (setup < 4 || setup + 6 >= sthayi.Count || (setup - 2) % 6 != 0
+            || sthayi[setup - 2].SourcePage != 2 || sthayi[setup + 4].SourcePage != 2)
+        {
+            return score;
+        }
+
+        return score with { Passes = BuildPasses(setup - 2, setup + 4, sthayi.Count) };
+    }
+
+    private static IReadOnlyList<ScorePass> BuildPasses(int upperPickup, int lowerPickup, int sthayiEnd)
+        => [new("पहली बार", 0, upperPickup), new("दूसरी बार", lowerPickup, sthayiEnd - lowerPickup)];
+
     internal static CompositionScore Create()
     {
         List<ScoreMaatra> sthayi = [];
         List<ScoreMaatra> antara = [];
 
         AddLine(sthayi, 1,
-            "Sa;Dha. Ni.;Sa;Ga MaTivra;Pa.;Re Re;Ga;-",
+            "Sa;Dha.>Ni.;Sa;Ga MaTivra;Pa.;Re Re;Ga;-",
             "रं;S;जिश;हीS;S;Sस;ही;S",
             (0, "Opening pickup. Starts on Dadra maatra 5."),
-            (1, "Check lower-register marks and whether Dha is a kan swar."));
+            (1, "Check lower-register marks."));
         AddLine(sthayi, 1,
-            "*;*;Ga;MaTivra Ga;Ga;MaTivra Dha;Pa;MaTivra;MaTivra Re;Re;MaTivra;Dha",
+            "*;*;Ga;MaTivra Ga;Ga;MaTivra Dha;(Pa)~;MaTivra;MaTivra Re;Re;MaTivra;Dha",
             "*;*;दिल;हीS;दु;खाS;ने;S;के;लि;ए;S",
             (6, "Bracketed Pa (khatka). Meend from Pa toward Ma on the next maatra."),
             (8, "Check whether the stacked printed Ma–Re is a kan swar."));
         AddLine(sthayi, 2,
-            "Pa;-;Ga Pa;Re Ga;Sa;Dha. Ni.",
+            "Pa;-;Ga Pa;Re Ga;Sa;Dha.>Ni.",
             "आ;S;SS;SS;रं;S",
-            (5, "Printed return cue to the sthayi. Check the stacked lower Dha and Ni."));
+            (5, "Printed return cue to the sthayi. Check the lower-register marks."));
+        int upperPickup = sthayi.Count - 2;
+        int lowerPickup = sthayi.Count + 4;
         AddLine(sthayi, 2,
             "?;?;?;-;Ni Sa';Dha Ni;Sa';Sa';Sa';Sa';Sa';-",
             "आ;S;S;S;आS;SS;फि;र;से;मु;झे;S",
-            (0, "The first three melody cells on this printed line are blank. Resolve against the return cue before playback."));
+            (0, "Printed context before the second-pass pickup. The first three melody cells are blank."),
+            (4, "Second-pass pickup, Dadra maatra 5. Continue into the next line at sam."));
         AddLine(sthayi, 2,
-            "Ni;Re' Ni;Ni;Dha;MaTivra;Dha Pa;Pa;Re;Re;Re;Pa MaTivra;Dha Pa",
+            "Ni;Re' Ni;Ni;Dha;MaTivra;Dha Pa;Pa~;Re;Re;Re;Pa MaTivra;Dha Pa",
             "छो;SS;ड़;के;जा;SS;ने;S;के;लि;एS;SS",
             (6, "Meend from Pa to Re."));
         AddLine(sthayi, 2,
@@ -45,23 +80,23 @@ internal static class RanjishHiSahiDraft
             (5, "Printed return cue to the sthayi."));
 
         AddLine(antara, 2,
-            "Sa';Ni;Pa;Pa;MaTivra Ga;MaTivra;Ga Re;-",
+            "Sa';Ni;Dha>Pa;Pa;MaTivra Ga;MaTivra;Ga Re;-",
             "कि;स;कि;स;कोS;ब;ताS;S",
             (0, "Antara pickup. Starts on Dadra maatra 5."),
-            (2, "Printed Dha above Pa. Review kan before Pa."));
+            (2, "Printed Dha above Pa. Kan before Pa."));
         AddLine(antara, 2,
-            "Ga;-;Ga;Sa Sa;Ni.;Dha.;Ni.;Re;Re;Pa;Ga;Re Sa",
+            "Ga;-;Ga~;Sa Sa;Ni.;Dha.;Ni.;Re;Re;Pa;Ga;Re Sa",
             "एं;S;गे;Sजु;दा;S;ई;S;का;स;ब;बS",
             (2, "Meend across the vibhaag line toward Sa."));
         AddLine(antara, 2,
-            "Pa;-;Ga;Re Sa;Re MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;Dha",
+            "Pa;-;Ga;Re Sa;Re MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;MaTivra;Ni>Dha",
             "हम;S;S;SS;SS;किस;कि;स;को;ब;ता;S",
             (8, "Check the marks around the two Ma swaras on either side of the vibhaag line."),
-            (11, "Printed Ni above Dha. Review kan before Dha."));
+            (11, "Printed Ni above Dha. Kan before Dha."));
         AddLine(antara, 2,
-            "Ga;?;Re;Re;Re;-;Re;Ni;Ni;Dha;Dha;Pa",
+            "Ma>Ga;?;Re;Re;Re;-;Re;Ni;Ni;Dha;Dha;Pa",
             "एं;S;गे;जु;दा;S;ई;S;का;स;ब;ब",
-            (0, "Printed Ma above Ga. Review kan before Ga."),
+            (0, "Printed Ma above Ga. Kan before Ga."),
             (1, "The swara row appears to use an S-shaped mark here. Its meaning needs review."));
         AddLine(antara, 3,
             "Pa;-;-;-;Ni Sa';Dha Ni;Sa';Sa';Sa';Sa';- Sa';-",
@@ -72,12 +107,15 @@ internal static class RanjishHiSahiDraft
             "है;SS;तोS;ज़;मा;S;ने;S;के;लि;ए;S",
             (4, "Check whether the small mark beside Pa is intentional."));
         AddLine(antara, 3,
-            "Pa;-;Ga Pa;Re Ga;Sa;Dha. Ni.",
+            "Pa;-;Ga Pa;Re Ga;Sa;Dha.>Ni.",
             "आ;S;SS;SS;रं;S",
             (5, "Printed return cue. Remaining verses are to follow the same pattern. Confirm arrangement before export."));
 
         return new CompositionScore("रंजिश ही सही", "Dadra",
-            [new ScoreSection("Sthayi", 5, sthayi.AsReadOnly()), new ScoreSection("Antara", 5, antara.AsReadOnly())]);
+            [new ScoreSection("स्थायी", 5, sthayi.AsReadOnly()), new ScoreSection("अंतरा", 5, antara.AsReadOnly())])
+        {
+            Passes = BuildPasses(upperPickup, lowerPickup, sthayi.Count)
+        };
     }
 
     private static void AddLine(List<ScoreMaatra> destination, int page, string swaras, string lyrics,

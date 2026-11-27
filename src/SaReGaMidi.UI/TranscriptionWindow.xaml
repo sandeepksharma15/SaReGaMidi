@@ -58,30 +58,43 @@
                             </StackPanel>
                         </Grid>
                         <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,10"
-                                   Text="One row per maatra. Enter swaras such as Sa, ReKomal, MaTivra, Ni. (mandra) or Sa' (taar). Separate subdivisions with spaces. Use - for sustain, * for silence, ? for an unclear reading, and S in lyrics for a syllable extension." />
-                        <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,10"
-                                   Text="Subdivisions default to equal lengths. For unequal lengths, use Sa:1/3 Re:2/3. In the first row of each section, set Start beat to the maatra where the section enters." />
-                        <WrapPanel Margin="0,0,0,8">
+                                   Text="Select a maatra to edit its swaras and lyrics beside the source scan." />
+                        <StackPanel x:Name="PassControls" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
+                            <Label Content="_Pass" Target="{Binding ElementName=PassBox}" />
+                            <ComboBox x:Name="PassBox" MinWidth="170" DisplayMemberPath="Name"
+                                      SelectionChanged="PassBox_SelectionChanged" FontFamily="Nirmala UI" />
+                        </StackPanel>
+                        <WrapPanel x:Name="RowControls" Margin="0,0,0,8">
                             <Button Content="_Add maatra" Style="{StaticResource ActionButton}" Click="Add_Click" Margin="0,0,6,0" />
-                            <Button Content="_Insert above" Style="{StaticResource ActionButton}" Click="Insert_Click" Margin="0,0,6,0" />
-                            <Button Content="_Remove row" Style="{StaticResource ActionButton}" Click="Remove_Click" />
+                            <Button Content="_Insert before" Style="{StaticResource ActionButton}" Click="Insert_Click" Margin="0,0,6,0" />
+                            <Button Content="_Remove maatra" Style="{StaticResource ActionButton}" Click="Remove_Click" />
                         </WrapPanel>
                     </StackPanel>
-                    <DataGrid x:Name="MaatraGrid" AutoGenerateColumns="False" CanUserAddRows="False"
-                              CanUserDeleteRows="False" CanUserSortColumns="False" SelectionMode="Single"
-                              SelectionChanged="MaatraGrid_SelectionChanged" RowEditEnding="MaatraGrid_RowEditEnding"
-                              AutomationProperties.Name="Transcription by maatra"
-                              EnableRowVirtualization="True" HeadersVisibility="Column">
-                        <DataGrid.Columns>
-                            <DataGridTextColumn Header="Page" Binding="{Binding SourcePage}" Width="48" />
-                            <DataGridTextColumn Header="Section" Binding="{Binding Section}" Width="80" />
-                            <DataGridTextColumn Header="Start beat" Binding="{Binding StartBeat}" Width="80" />
-                            <DataGridTextColumn Header="Beat" Binding="{Binding Beat}" IsReadOnly="True" Width="48" />
-                            <DataGridTextColumn Header="Swaras" Binding="{Binding Swaras}" Width="130" />
-                            <DataGridTextColumn Header="Lyrics" Binding="{Binding Lyrics}" Width="90" />
-                            <DataGridTextColumn Header="Notes / cues" Binding="{Binding Annotation}" Width="*" MinWidth="135" />
-                        </DataGrid.Columns>
-                    </DataGrid>
+                    <TabControl x:Name="ScoreTabs" SelectionChanged="ScoreTabs_SelectionChanged">
+                        <TabItem Header="_Notation">
+                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                <StackPanel x:Name="NotationSheet" Grid.IsSharedSizeScope="True" Margin="8" />
+                            </ScrollViewer>
+                        </TabItem>
+                        <TabItem Header="_Details">
+                            <DataGrid x:Name="MaatraGrid" AutoGenerateColumns="False" CanUserAddRows="False"
+                                      CanUserDeleteRows="False" CanUserSortColumns="False" SelectionMode="Single"
+                                      SelectionChanged="MaatraGrid_SelectionChanged" RowEditEnding="MaatraGrid_RowEditEnding"
+                                      AutomationProperties.Name="Transcription by maatra"
+                                      EnableRowVirtualization="True" HeadersVisibility="Column">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Page" Binding="{Binding SourcePage}" Width="48" />
+                                    <DataGridTextColumn Header="Section" Binding="{Binding Section}" Width="80" />
+                                    <DataGridTextColumn Header="Start beat" Binding="{Binding StartBeat}" Width="80" />
+                                    <DataGridTextColumn Header="Beat" Binding="{Binding Beat}" IsReadOnly="True" Width="48" />
+                                    <DataGridTextColumn Header="Swaras" Binding="{Binding Swaras}" Width="130" />
+                                    <DataGridCheckBoxColumn Header="Group" Binding="{Binding ShowGrouping}" Width="56" />
+                                    <DataGridTextColumn Header="Lyrics" Binding="{Binding Lyrics}" Width="90" />
+                                    <DataGridTextColumn Header="Notes / cues" Binding="{Binding Annotation}" Width="*" MinWidth="135" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
                 </DockPanel>
             </Border>
         </Grid>

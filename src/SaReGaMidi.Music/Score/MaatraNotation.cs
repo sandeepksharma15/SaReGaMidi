@@ -38,7 +38,7 @@ public static class MaatraNotation
         {
             string symbol = note.Kind switch
             {
-                SwaraEventKind.Note => FormatPitch(note.Pitch!.Value),
+                SwaraEventKind.Note => FormatOrnaments(note),
                 SwaraEventKind.Sustain => "-",
                 SwaraEventKind.Silence => "*",
                 _ => "?"
@@ -61,7 +61,9 @@ public static class MaatraNotation
         {
             if (note is null || !Enum.IsDefined(note.Kind)
                 || (note.Kind == SwaraEventKind.Note) != note.Pitch.HasValue
-                || (note.Pitch is SwaraPitch pitch && (!Enum.IsDefined(pitch.Swara) || !Enum.IsDefined(pitch.Saptak))))
+                || (note.Pitch is SwaraPitch pitch && !IsPitchValid(pitch))
+                || (note.Pitch is null && (note.Khatka || note.KanSwara.HasValue || note.MeendToNext))
+                || (note.KanSwara is SwaraPitch kan && !IsPitchValid(kan)))
             {
                 throw new FormatException("The maatra contains an invalid swara event.");
             }
@@ -93,6 +95,29 @@ public static class MaatraNotation
                 return new SwaraEvent(SwaraEventKind.Unclear, null, duration);
         }
 
+        bool meend = symbol.EndsWith('~');
+        if (meend)
+            symbol = symbol[..^1];
+
+        string[] pitches = symbol.Split('>', 2);
+        string main = pitches[^1];
+        bool khatka = main.StartsWith('(') && main.EndsWith(')');
+        if (khatka)
+            main = main[1..^1];
+
+        return new SwaraEvent(SwaraEventKind.Note, ParsePitch(main), duration)
+        {
+            Khatka = khatka,
+            KanSwara = pitches.Length == 2 ? ParsePitch(pitches[0]) : null,
+            MeendToNext = meend
+        };
+    }
+
+    private static bool IsPitchValid(SwaraPitch pitch)
+        => Enum.IsDefined(pitch.Swara) && Enum.IsDefined(pitch.Saptak);
+
+    private static SwaraPitch ParsePitch(string symbol)
+    {
         Saptak saptak = symbol.EndsWith('\'') ? Saptak.Taar : symbol.EndsWith('.') ? Saptak.Mandra : Saptak.Madhya;
         string swaraName = saptak == Saptak.Madhya ? symbol : symbol[..^1];
 
@@ -102,7 +127,19 @@ public static class MaatraNotation
             throw new FormatException($"Unknown swara '{symbol}'.");
         }
 
-        return new SwaraEvent(SwaraEventKind.Note, new SwaraPitch(swara, saptak), duration);
+        return new SwaraPitch(swara, saptak);
+    }
+
+    private static string FormatOrnaments(SwaraEvent note)
+    {
+        string main = FormatPitch(note.Pitch!.Value);
+        if (note.Khatka)
+            main = $"({main})";
+
+        if (note.KanSwara is SwaraPitch kan)
+            main = $"{FormatPitch(kan)}>{main}";
+
+        return note.MeendToNext ? $"{main}~" : main;
     }
 
     private static string FormatPitch(SwaraPitch pitch)

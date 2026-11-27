@@ -16,6 +16,8 @@
 
 - Imports record user-confirmed page order in a versioned manifest beside copied scans. Each new composition has its own workspace with source and artifact folders. The work-folder setting applies to future imports. Startup reopens the last imported workspace by default.
 
-- The versioned score file stores composition, sections, and maatras. Each section starts on an explicit beat of the taal. Swara durations are exact maatra fractions. Lyric text and review annotations are stored separately from swara events. Source page references are independent of cycle timing.
+- The versioned score file stores composition, sections, and maatras. Each section starts on an explicit beat of the taal. Swara durations are exact maatra fractions. Lyric text and review annotations are stored separately from swara events. Source page references are independent of cycle timing. Khatka, kan swar and outgoing meend attach to pitched swaras. Maatra grouping is a display mark, and S extends the lyric syllable without changing musical time.
+
+- In the printed Sthayi of Ranjish Hi Sahi, the two rows give alternative pickups on Dadra beats 5 and 6. The first pass uses the upper row. The second uses the lower row and continues into the next Sthayi line at sam. The score stores each pass as an ordered range of written maatras, independent of scan pagination.
 
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.

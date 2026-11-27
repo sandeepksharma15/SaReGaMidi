@@ -25,9 +25,9 @@ Use **Settings** to choose Light or Dark and set the work folder for future impo
 
 ## Transcribe a composition
 
-From source review, select **Transcribe**. Use the scan on the left to check page references, and enter one maatra per row on the right. Give each section a name and set its first row's **Start beat** relative to sam.
+From source review, select **Transcribe**. The **Notation** tab shows Devanagari swaras above the lyrics with vibhaag marks. Select a maatra to edit it using the swara palette and live preview. Select a swara to add khatka, kan swar or meend to the next swara. The grouping curve applies to the whole maatra. Use **S Lyric continuation** to insert an extender in the lyric row. Set the first maatra of each section's **Start beat** relative to sam. The **Details** tab is available for table editing.
 
-For the three original Ranjish Hi Sahi scans in reading order, **Load Ranjish Hi Sahi draft** brings in the printed sthayi and antara as a draft. Review the notes and cues against the book. **Save score** stores the transcription as `score.json` in the workspace. Open **Transcribe** again to resume editing.
+For the three original Ranjish Hi Sahi scans in reading order, **Load Ranjish Hi Sahi draft** brings in the printed sthayi and antara as a draft. Review the notes and cues against the book. In **Pass**, choose **पहली बार** or **दूसरी बार** to follow either Sthayi pickup. Use **Written score** to see the full transcription. **Save score** stores the transcription as `score.json` in the workspace. Open **Transcribe** again to resume editing.
 
 ## Development
 
