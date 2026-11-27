@@ -36,7 +36,7 @@ internal sealed class SwaraInk
         InkShape[] baselineBodies = shapes.Where(shape => shape.Bounds.Height >= crop.Height / 5 && shape.Area >= 130
             && shape.Bounds.Y >= crop.Y + crop.Height / 9).ToArray();
         Int32Rect? fallback = baselineBodies is [InkShape fallbackBody] ? Pad(fallbackBody.Bounds, crop) : null;
-        char? octave = bodies is [InkShape body] ? ReadOctave(body.Bounds, shapes) : null;
+        char? octave = bodies is [InkShape body] ? ReadOctave(body.Bounds, shapes, minimumLowerDotArea: 9) : null;
         if (bodies.Length != 2)
             return new(tivra, fallback, null, null, octave, null, null, symbol);
 
@@ -80,9 +80,9 @@ internal sealed class SwaraInk
             && headline - Bottom(shape.Bounds) <= 4);
     }
 
-    private char? ReadOctave(Int32Rect body, IEnumerable<InkShape> shapes)
+    private char? ReadOctave(Int32Rect body, IEnumerable<InkShape> shapes, int minimumLowerDotArea = 6)
     {
-        if (HasLowerDot(body, shapes))
+        if (HasLowerDot(body, shapes.Where(shape => shape.Area >= minimumLowerDotArea)))
             return '.';
 
         foreach (InkShape shape in shapes)
@@ -174,8 +174,11 @@ internal sealed class SwaraInk
         int left = Right(body);
         int right = body.X;
         int underlineTop = Bottom(body);
-        for (int y = Bottom(body) - 1; y >= Bottom(body) - 6; y--)
+        int underlineBottom = 0;
+        for (int y = Bottom(body) - 1; y >= Bottom(body) - Math.Min(13, body.Height / 4); y--)
         {
+            if (y == Bottom(body) - 7 && right > left)
+                break;
             int run = 0;
             for (int x = body.X; x <= Right(body); x++)
             {
@@ -195,6 +198,7 @@ internal sealed class SwaraInk
                         left = Math.Min(left, x - run);
                         right = Math.Max(right, x);
                         underlineTop = Math.Min(underlineTop, y);
+                        underlineBottom = Math.Max(underlineBottom, y + 1);
                     }
                 }
                 run = 0;
@@ -209,7 +213,18 @@ internal sealed class SwaraInk
             .Select(shape => CenterX(shape.Bounds)).ToArray();
         Int32Rect text = Pad(body, crop);
         text.Height = underlineTop - text.Y;
-        return new KomalMark(text, body, left, right, dots);
+        // A mandra dot may touch the underline and belong to the same ink component.
+        int? lowerDot = null;
+        if (Bottom(body) - underlineBottom is >= 2 and <= 9)
+        {
+            Int32Rect tail = new(left, underlineBottom, right - left, Bottom(body) - underlineBottom);
+            if (Components(tail) is [InkShape dot] && IsDot(dot.Bounds) && dot.Area >= 9
+                && dot.Bounds.Width < tail.Width / 2)
+                lowerDot = CenterX(dot.Bounds);
+        }
+        if (underlineBottom <= Bottom(body) - 6 && lowerDot is null)
+            return null;
+        return new KomalMark(text, body, left, right, dots, lowerDot);
     }
 
     internal bool HasLyricNukta(Int32Rect crop)
@@ -223,6 +238,16 @@ internal sealed class SwaraInk
     {
         InkShape[] shapes = Components(crop).Where(shape => shape.Area >= 35).ToArray();
         return shapes is [InkShape shape] && ReadIsolatedSymbol(shape, crop) == "*";
+    }
+
+    internal bool HasPlainRaLeg(Int32Rect crop)
+    {
+        if (Components(crop) is not [InkShape glyph])
+            return false;
+        Int32Rect bounds = glyph.Bounds;
+        // The lower half of plain र ends in a single stroke slanting to the right.
+        return InkRuns(bounds, 0.62) is [var middle] && InkRuns(bounds, 0.90) is [var tip]
+            && tip.Left > middle.Left && tip.Right > middle.Right && tip.Right - tip.Left < 0.4;
     }
 
     private int? FindJoinedLeadingMark(Int32Rect bounds)
@@ -425,4 +450,4 @@ internal readonly record struct LyricMarks(int Leading, int Trailing, Int32Rect?
     internal bool Found => Leading + Trailing > 0;
 }
 
-internal sealed record KomalMark(Int32Rect Text, Int32Rect Body, int Left, int Right, int[] UpperDots);
+internal sealed record KomalMark(Int32Rect Text, Int32Rect Body, int Left, int Right, int[] UpperDots, int? LowerDot);

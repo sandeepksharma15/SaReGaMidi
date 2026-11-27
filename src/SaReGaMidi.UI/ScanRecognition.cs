@@ -158,8 +158,13 @@ internal static class ScanRecognition
                         && ReadSwaras(NormalizeSwara(swaraReading.Text), cell.Marks.Tivra).Length == 0)
                         swaraReading = new("म॑", swaraReading.Confidence);
 
+                    OcrReading tightLyric = ReadCrop(cell.TightLyric);
+                    // OCR sometimes reads the diagonal leg of an isolated र as an extra halant.
+                    if (tightLyric.Text?.TrimEnd('\u200C') == "र्" && tightLyric.Confidence >= LowConfidence
+                        && cell.TightLyric is int crop && ink.HasPlainRaLeg(crops[crop]))
+                        tightLyric = tightLyric with { Text = "र" };
                     OcrReading lyrics = cell.LyricSilence ? new("*", 100) : ReadLyrics(ReadCrop(cell.Lyrics),
-                        ReadCrop(cell.LyricBody), ReadCrop(cell.TightLyric), cell.LyricMarks, cell.LyricNukta);
+                        ReadCrop(cell.LyricBody), tightLyric, cell.LyricMarks, cell.LyricNukta);
                     ScoreMaatra maatra = BuildMaatra(page + 1, cell.Swaras.HasValue || cell.Symbol is not null,
                         swaraReading, cell.Lyrics.HasValue || cell.LyricMarks.Found || cell.LyricSilence,
                         lyrics, index == 0, cue,
@@ -172,13 +177,17 @@ internal static class ScanRecognition
                     maatras.Add(maatra);
                 }
 
-                for (int index = maatras.Count - row.Cells.Length; index + 1 < maatras.Count; index++)
+                int rowStart = maatras.Count - row.Cells.Length;
+                for (int index = rowStart; index + 1 < maatras.Count; index++)
                 {
                     ScoreMaatra current = maatras[index];
-                    if (current.Swaras is [SwaraEvent { MeendToNext: true } swara]
-                        && !maatras[index + 1].Swaras.Any(next => next.Pitch.HasValue))
+                    if (current.Swaras.Count > 0 && current.Swaras[^1].Pitch.HasValue
+                        && row.Cells[index - rowStart].Meend
+                        && maatras[index + 1].Swaras.Any(next => next.Pitch.HasValue))
                     {
-                        maatras[index] = current with { Swaras = [swara with { MeendToNext = false }] };
+                        SwaraEvent[] notes = current.Swaras.ToArray();
+                        notes[^1] = notes[^1] with { MeendToNext = true };
+                        maatras[index] = current with { Swaras = notes };
                     }
                 }
             }
@@ -269,6 +278,10 @@ internal static class ScanRecognition
         if (hasSwaras)
         {
             bool tivra = marks?.Tivra == true;
+            // A taar dot can be transcribed as a Vedic accent. Check the unmarked body of Ma.
+            if (!tivra && marks?.Octave == '\'' && swaraReading.Text.EndsWith("म\u0951", StringComparison.Ordinal)
+                && fallback.Confidence >= LowConfidence && fallback.Text.EndsWith('म'))
+                swaraReading = swaraReading with { Text = swaraReading.Text[..^1] };
             string notation = ReadSwaras(NormalizeSwara(swaraReading.Text), tivra);
             if (swaraReading.Text.Contains('घ'))
                 cues.Add("Confirm the Dha reading.");
@@ -305,8 +318,6 @@ internal static class ScanRecognition
 
             if (meend)
             {
-                if (IsSinglePitch(notation.TrimEnd('.', '\'')) || (notation.StartsWith('(') && notation.EndsWith(')')))
-                    notation += "~";
                 cues.Add("Check the printed meend and its endpoints.");
             }
 
@@ -340,6 +351,9 @@ internal static class ScanRecognition
     {
         string reading = ReadSwaras(NormalizeSwara(clean.Text));
         bool recovered = maatra.Swaras is [{ Kind: SwaraEventKind.Unclear }] && reading.Length > 0;
+        if (maatra.Swaras is [{ Pitch: SwaraPitch single, KanSwara: null, Khatka: false }] && clean.Confidence >= LowConfidence
+            && reading.Split(' ') is [string first, string last] && IsSinglePitch(first) && last == single.Swara.ToString())
+            recovered = true;
         SwaraEvent[] notes = (recovered ? MaatraNotation.Parse(reading) : maatra.Swaras).ToArray();
         for (int index = 0; index < notes.Length; index++)
         {
@@ -355,7 +369,8 @@ internal static class ScanRecognition
                     Swara.Re => Swara.ReKomal, Swara.Ga => Swara.GaKomal,
                     Swara.Dha => Swara.DhaKomal, Swara.Ni => Swara.NiKomal, _ => swara
                 };
-            Saptak octave = mark.UpperDots.Any(x => x >= left && x < right) ? Saptak.Taar : pitch.Saptak;
+            Saptak octave = mark.LowerDot is int dot && dot >= left && dot < right ? Saptak.Mandra
+                : mark.UpperDots.Any(x => x >= left && x < right) ? Saptak.Taar : pitch.Saptak;
             notes[index] = note with { Pitch = new SwaraPitch(swara, octave) };
         }
         return maatra with { Swaras = notes };

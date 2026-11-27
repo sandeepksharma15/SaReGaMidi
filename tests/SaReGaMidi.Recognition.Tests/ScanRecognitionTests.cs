@@ -213,6 +213,12 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
         ScoreMaatra[][] lines = WrittenLines(draft.Score).ToArray();
         foreach (ScoreMaatra[] line in lines)
             output.WriteLine(string.Join(" | ", line.Select(cell => MaatraNotation.Format(cell.Swaras))));
+        Assert.Equal("ReKomal GaKomal~", MaatraNotation.Format(lines[0][14].Swaras));
+        Assert.Equal("Sa' Ma'", MaatraNotation.Format(lines[4][12].Swaras));
+        Assert.Equal("र", lines[5][12].Lyrics);
+        Assert.Equal("Sa", MaatraNotation.Format(lines[0][15].Swaras));
+        Assert.Equal("DhaKomal NiKomal", MaatraNotation.Format(lines[1][5].Swaras));
+        Assert.Equal("Sa NiKomal.", MaatraNotation.Format(lines[1][14].Swaras));
         Assert.Equal("GaKomal ReKomal", MaatraNotation.Format(lines[0][12].Swaras));
         Assert.Equal("Sa'", MaatraNotation.Format(lines[3][2].Swaras));
         Assert.Equal("GaKomal' Ma'", MaatraNotation.Format(lines[4][13].Swaras));
