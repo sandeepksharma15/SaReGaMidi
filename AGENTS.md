@@ -1,16 +1,8 @@
-# Craft agent instructions
+# SaReGaMidi agent instructions
 
-Before writing or editing code:
+Before editing code, read [.editorconfig](.editorconfig), the [coding style](docs/development/CODING_STYLE.md), and the [project memory](docs/development/PROJECT_MEMORY.md). Inspect the relevant source, tests, and configuration.
 
-1. Read [CODING_STYLE.md](CODING_STYLE.md) and `.editorconfig`.
-2. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) and the relevant project guidance.
-3. Inspect the actual implementation, tests and configuration. Read `.github/copilot-memory.md` before substantive work.
-
-Sandeep's confirmed readability preferences apply across production code, tests and examples:
-
-- Explicit types by default; `var` is allowed when the type is immediately obvious.
-- Standard member regions in larger classes: fields, constructors, properties and methods.
-- Minimal essential comments, with brief XML documentation only where the public contract needs explanation.
-- One statement per line and clear whitespace between logical steps.
-
-Follow current user instructions when they refine these preferences. Keep changes focused, preserve the approved architecture and validate behavioral changes with relevant builds and tests. Do not undertake repository-wide reformatting unless requested.
+- Confirm the scope of substantial changes and resolve material ambiguity before implementation.
+- Preserve established musical and application behavior. Prefer the smallest complete change and use existing conventions.
+- Build the affected solution, run relevant tests or a smoke check for changed behavior, and review the diff. Report what was verified.
+- Update project memory when an agreed decision or durable constraint would help future work.

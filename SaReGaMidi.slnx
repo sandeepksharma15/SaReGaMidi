@@ -1,1 +1,3 @@
-<Solution />
+<Solution>
+  <Project Path="src/SaReGaMidi.UI/SaReGaMidi.UI.csproj" />
+</Solution>
