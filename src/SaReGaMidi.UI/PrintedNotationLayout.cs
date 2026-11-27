@@ -13,12 +13,19 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
 {
     private readonly int _width = source.PixelWidth;
     private readonly int _height = source.PixelHeight;
-    private readonly byte[] _ink = ReadInk(source);
+    private byte[] _ink = ReadInk(source);
 
     internal IReadOnlyList<PrintedLine> Read(Taal taal, CancellationToken cancellationToken)
     {
         List<List<Int32Rect>> groups = [];
-        foreach (Int32Rect divider in FindDividers(cancellationToken).OrderBy(CenterY))
+        List<Int32Rect> dividers = FindDividers(cancellationToken);
+        if (dividers.Count < 2)
+        {
+            _ink = ReadInk(source, 190);
+            dividers = FindDividers(cancellationToken);
+        }
+
+        foreach (Int32Rect divider in dividers.OrderBy(CenterY))
         {
             List<Int32Rect>? group = groups.LastOrDefault();
             if (group is null || CenterY(divider) - CenterY(group[0]) > group[0].Height * 0.55)
@@ -64,17 +71,21 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
             {
                 int left = division < 0 ? bars[0].X - divisionWidth : bars[division].X;
                 bool trailing = division + 1 == bars.Length;
-                int right = trailing ? left + divisionWidth * 3 / 2 : bars[division + 1].X;
+                int count = divisionLengths[(division + divisionLengths.Length) % divisionLengths.Length];
+                // Allow extra spacing after the final divider, where the printer has room to spread the notes.
+                int trailingWidth = divisionWidth + divisionWidth / (count >= 4 ? count : 2);
+                int right = trailing ? left + trailingWidth : bars[division + 1].X;
                 int top = division < 0 ? 2 * bars[0].Y - bars[1].Y : bars[division].Y;
                 int nextTop = trailing ? 2 * bars[^1].Y - bars[^2].Y : bars[division + 1].Y;
-                int count = divisionLengths[(division + divisionLengths.Length) % divisionLengths.Length];
                 List<PrintedCell> divisionCells = [];
                 int[] boundaries = new int[count + 1];
                 for (int beat = 0; beat <= count; beat++)
                 {
                     int x = left + (right - left) * beat / count;
                     int y = top + (nextTop - top) * beat / count;
-                    boundaries[beat] = trailing && beat > 0 && beat < count
+                    boundaries[beat] = count >= 4 && division >= 0 && !trailing && beat > 0 && beat < count
+                        ? FindBeatBoundary(x, y, length, (right - left) / (count * 3))
+                        : trailing && beat > 0 && beat < count
                         ? AlignTrailingBoundary(x, y, length, divisionWidth / (2 * count)) : x;
                 }
                 for (int beat = 0; beat < count; beat++)
@@ -114,6 +125,38 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
         }
 
         return lines;
+    }
+
+    private int FindBeatBoundary(int expected, int top, int height, int radius)
+    {
+        // A beat can contain several joined swaras. Look for the nearest clear gutter on both tiers.
+        int first = Math.Max(0, expected - radius);
+        int last = Math.Min(_width - 1, expected + radius);
+        int gap = 0;
+        int best = expected;
+        int distance = int.MaxValue;
+        for (int x = first; x <= last; x++)
+        {
+            bool clear = true;
+            for (int y = Math.Max(0, top); y < Math.Min(_height, top + height); y++)
+            {
+                if (_ink[y * _width + x] == 0)
+                    continue;
+                clear = false;
+                break;
+            }
+
+            gap = clear ? gap + 1 : 0;
+            if (gap < 7)
+                continue;
+            int candidate = x - 3;
+            if (Math.Abs(candidate - expected) < distance)
+            {
+                best = candidate;
+                distance = Math.Abs(candidate - expected);
+            }
+        }
+        return best;
     }
 
     private int AlignTrailingBoundary(int x, int y, int height, int searchWidth)
@@ -240,13 +283,13 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
             && width >= height * 3 && area >= width * height * 0.34;
     }
 
-    private static byte[] ReadInk(BitmapSource source)
+    private static byte[] ReadInk(BitmapSource source, int threshold = 110)
     {
         BitmapSource gray = new FormatConvertedBitmap(source, PixelFormats.Gray8, null, 0);
         byte[] pixels = new byte[gray.PixelWidth * gray.PixelHeight];
         gray.CopyPixels(pixels, gray.PixelWidth, 0);
         for (int index = 0; index < pixels.Length; index++)
-            pixels[index] = pixels[index] < 110 ? (byte)1 : (byte)0;
+            pixels[index] = pixels[index] < threshold ? (byte)1 : (byte)0;
         return pixels;
     }
 

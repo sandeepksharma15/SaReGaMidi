@@ -39,7 +39,7 @@ internal static class SwaraGlyph
 
         return CreateLabel(note.Kind switch
         {
-            SwaraEventKind.Sustain => "–",
+            SwaraEventKind.Sustain => note.SustainPrintedAsS ? "S" : "–",
             SwaraEventKind.Silence => "*",
             _ => "?"
         }, size);

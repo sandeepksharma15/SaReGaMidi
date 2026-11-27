@@ -117,6 +117,47 @@ public partial class TranscriptionWindow : Window
         StatusText.Text = "Draft loaded for all three pages. Review uncertain swaras, ornaments, and return cues before saving.";
     }
 
+    private void ExportMidi_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_canEdit || _busy || !CommitGrid())
+            return;
+        try
+        {
+            CompositionScore score = BuildScore();
+            MidiExportWindow? options = ChooseMidiSettings(score, playback: false);
+            if (options is null)
+                return;
+
+            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo);
+            string folder = Path.Combine(_workspace.FolderPath, "artifacts");
+            Directory.CreateDirectory(folder);
+            Microsoft.Win32.SaveFileDialog dialog = new()
+            {
+                Title = "Export MIDI", InitialDirectory = folder, Filter = "MIDI file (*.mid)|*.mid",
+                DefaultExt = ".mid", FileName = string.Join("_", score.Title.Split(Path.GetInvalidFileNameChars()))
+            };
+            if (dialog.ShowDialog(this) != true)
+                return;
+
+            string temporary = Path.Combine(Path.GetDirectoryName(dialog.FileName)!, $"{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllBytes(temporary, midi);
+                File.Move(temporary, dialog.FileName, true);
+            }
+            finally
+            {
+                File.Delete(temporary);
+            }
+            StatusText.Text = $"Exported MIDI to {dialog.FileName}";
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
+            or InvalidDataException or FormatException or ArgumentException or OverflowException)
+        {
+            StatusText.Text = $"Could not export MIDI. {exception.Message}";
+        }
+    }
+
     private async void Save_Click(object sender, RoutedEventArgs e)
     {
         if (!_canEdit || _busy || !CommitGrid())
@@ -392,11 +433,13 @@ public partial class TranscriptionWindow : Window
 
     private void UpdateActions()
     {
+        PlayButton.IsEnabled = _playbackCancellation is not null || (_canEdit && !_busy && _rows.Count > 0);
         EditorPanel.IsEnabled = _canEdit && !_busy;
-        GenerateDraftButton.IsEnabled = _recognitionCancellation is not null || (_canEdit && !_busy);
+        GenerateDraftButton.IsEnabled = _recognitionCancellation is not null || (_canEdit && !_busy && _playbackCancellation is null);
         GenerateDraftButton.Content = _recognitionCancellation is not null ? "_Cancel draft"
             : _rows.Count > 0 ? "_Regenerate draft" : "_Generate draft";
         ReferenceButton.IsEnabled = _canEdit && !_busy;
+        ExportButton.IsEnabled = _canEdit && !_busy && _rows.Count > 0;
         SaveButton.IsEnabled = _canEdit && !_busy;
     }
 

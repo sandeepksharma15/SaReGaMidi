@@ -47,6 +47,8 @@ public readonly record struct LyricMarker(int TextOffset, SwaraEventKind Kind);
 
 public sealed record SwaraEvent(SwaraEventKind Kind, SwaraPitch? Pitch, MaatraFraction Duration)
 {
+    public bool SustainPrintedAsS { get; init; }
+
     public bool Khatka { get; init; }
 
     public SwaraPitch? KanSwara { get; init; }

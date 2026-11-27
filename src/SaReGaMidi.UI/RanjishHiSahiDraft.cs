@@ -164,10 +164,10 @@ internal static class RanjishHiSahiDraft
             (8, "Check the marks around the two Ma swaras on either side of the vibhaag line."),
             (11, "Printed Ni above Dha. Kan before Dha."));
         AddLine(antara, 2,
-            "Ma>Ga;?;Re;Re;Re;-;Re;Ni;Ni;Dha;Dha;Pa",
+            "Ma>Ga;S;Re;Re;Re;-;Re;Ni;Ni;Dha;Dha;Pa",
             "एं;S;गे;जु;दा;S;ई;S;का;स;ब;ब",
             (0, "Printed Ma above Ga. Kan before Ga."),
-            (1, "The swara row appears to use an S-shaped mark here. Its meaning needs review."));
+            (1, "The printed S sustains Ga for one more maatra."));
         AddLine(antara, 3,
             "Pa;-;-;-;Ni Sa';Dha Ni;Sa';Sa';Sa';Sa';- Sa';-",
             "हम;S;S;S;तूS;SS;मु;झ;से;ख़;फा;S",

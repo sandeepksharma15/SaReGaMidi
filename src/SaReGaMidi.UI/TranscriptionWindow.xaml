@@ -12,6 +12,16 @@
         <StatusBar DockPanel.Dock="Bottom" Style="{StaticResource WorkspaceStatusBar}" Margin="0,12,0,0">
             <StatusBarItem>
                 <StackPanel Orientation="Horizontal">
+                    <Button x:Name="PlayButton" Content="▶  _Play" Click="Play_Click" IsEnabled="False"
+                            Style="{StaticResource ActionButton}" MinWidth="76" />
+                    <CheckBox x:Name="MelodyBox" Content="Melody" IsChecked="True" Margin="12,0,0,0"
+                              Click="Track_Click" VerticalAlignment="Center" />
+                    <CheckBox x:Name="ThekaBox" Content="Theka" IsChecked="True" Margin="10,0,12,0"
+                              Click="Track_Click" VerticalAlignment="Center" />
+                </StackPanel>
+            </StatusBarItem>
+            <StatusBarItem>
+                <StackPanel Orientation="Horizontal">
                     <ProgressBar x:Name="RecognitionProgress" Visibility="Collapsed" IsIndeterminate="True"
                                  Width="72" Height="6" Margin="0,0,10,0" VerticalAlignment="Center"
                                  AutomationProperties.Name="Transcription in progress" />
@@ -25,6 +35,8 @@
                         Click="GenerateDraft_Click" Visibility="Collapsed" Margin="0,0,8,0" />
                 <Button x:Name="ReferenceButton" Content="Load Ranjish Hi Sahi draft" Style="{StaticResource ActionButton}"
                         Click="Reference_Click" Visibility="Collapsed" Margin="0,0,8,0" />
+                <Button x:Name="ExportButton" Content="Export _MIDI…" Style="{StaticResource ActionButton}"
+                        Click="ExportMidi_Click" IsEnabled="False" Margin="0,0,8,0" />
                 <Button x:Name="SaveButton" Content="_Save score" Style="{StaticResource PrimaryButton}"
                         Click="Save_Click" IsEnabled="False" />
             </StackPanel>

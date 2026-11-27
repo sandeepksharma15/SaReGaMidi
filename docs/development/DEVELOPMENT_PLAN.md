@@ -6,7 +6,7 @@ Bring a printed Bhatkhande composition into the Windows app as an editable score
 
 ## Starting point
 
-The .NET 11 WPF shell runs. `SaReGaMidi.Music` already provides relative swara pitch, Devanagari glyphs with Bhatkhande marks, and six taal patterns. The first benchmark is the supplied three-page Dadra setting of “Ranjish Hi Sahi” and its accompanying notation legend.
+The .NET 11 WPF shell runs. `SaReGaMidi.Music` already provides relative swara pitch, Devanagari glyphs with Bhatkhande marks, and ten taal patterns. The first benchmark is the supplied three-page Dadra setting of “Ranjish Hi Sahi” and its accompanying notation legend.
 
 ## Milestones
 

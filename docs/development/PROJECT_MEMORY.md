@@ -11,7 +11,7 @@
 - The initial Windows desktop shell is `src/SaReGaMidi.UI`, a C# WPF application targeting .NET 11. The current milestone establishes the application entry point and main window.
 - Keep the composition representation independent of WPF and MIDI so each output can use the same musical data.
 - `src/SaReGaMidi.Music` adapts swara and tonic-relative pitch calculations from Clefer.Domain and Devanagari pitch symbols from Clefer.Lipi. Komal underlines, tivra strokes and saptak dots are separate from the glyph text. [Notation reference](https://www.indianmusic.in/downloads/d5694c6845bb4439abb25138180f939f_Hindustani_Music_ThBook1_Eng.pdf)
-- The built-in taal catalog adapts six Clefer.Domain patterns. Each entry covers one maatra and a null entry represents a rest. Rupak starts on both sam and khali and uses the 0–1–2 marking convention. Instrument mapping and stroke timing belong in playback. [Taal reference](https://naadabrahma.in/taal)
+- The built-in taal catalog adapts six Clefer.Domain patterns and adds Sooltal, Ektal, Chautal and Tilwada with their own Devanagari thekas. Each entry covers one maatra and a null entry represents a rest. Rupak starts on both sam and khali and uses the 0–1–2 marking convention. Instrument mapping and stroke timing belong in playback. [Taal reference](https://naadabrahma.in/taal) · [Additional thekas](https://musicsheets.site/taals)
 - Clefer's rendering layout, audio analysis models and AI-backed raag lookup remain reference material. Define composition timing and the interpretation of printed sustain and rest signs before reusing score-level code.
 
 - Imports record user-confirmed page order in a versioned manifest beside copied scans. Each new composition has its own workspace with source and artifact folders. The work-folder setting applies to future imports. Startup reopens the last imported workspace by default.
@@ -29,6 +29,12 @@
 - Explicit meend endpoints use stable swara anchors, following Clefer's span model. A span can cross multiple maatras and printed lines. Older next-swara meends remain readable.
 - The meend editor can filter destinations by written maatra distance. A fully blank maatra keeps its rhythm position and may still borrow swaras during a pass. The score exposes each written S as a LyricalContinuation marker on the lyric line.
 
+- Preserve an S printed as a swara sustain. It holds the preceding pitch for its written duration. An S in the lyric row independently continues the vowel.
+
 - Automatically save successful OCR drafts in the workspace score. Transcribe reopens the saved score. Regeneration replaces it after confirmation and successful recognition. Manual edits use Save score.
+
+The MIDI proof uses Type 1 files, one quarter note per maatra, 960 ticks per quarter, and one bar per taal cycle. An opening pickup keeps its beat offset from sam. The export dialog offers written order and saved passages. Melody uses the principal pitches and sustains. Theka uses a separate General MIDI drum mapping on channel 10. Ornamental playback and manual verification in Mixcraft are pending.
+
+In-app playback auditions the exported MIDI through the Windows default MIDI output. Play and Export share passage, tonic and tempo for the open transcription. Live Melody and Theka volume switches affect the audition only.
 
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.

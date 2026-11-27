@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net11.0-windows</TargetFramework>
@@ -10,6 +10,8 @@
 		<InternalsVisibleTo Include="SaReGaMidi.Recognition.Tests" />
 	</ItemGroup>
 	<ItemGroup>
+		<PackageReference Include="NAudio.WinMM" Version="3.0.0-preview.17" />
+		<PackageReference Include="NAudio.Midi" Version="3.0.0-preview.17" />
 		<PackageReference Include="TesseractOCR" Version="5.5.4" GeneratePathProperty="true" />
 		<None Update="tessdata/hin.traineddata;tessdata/LICENSE"
 			CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />

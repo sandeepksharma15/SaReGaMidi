@@ -35,6 +35,8 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
     [InlineData("म\u0951", "MaTivra")]
     [InlineData("रेम\u0951", "Re MaTivra")]
     [InlineData("–", "-")]
+    [InlineData("S", "S")]
+    [InlineData("ऽ", "S")]
     [InlineData("*", "*")]
     [InlineData("text", "?")]
     public void BuildMaatra_PrintedSymbols_PreservesSemantics(string printed, string expected)
@@ -163,7 +165,7 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
         foreach (int number in recoveredLyrics)
             Assert.Equal(cells[number - 1].Expected.Lyrics, cells[number - 1].Actual.Lyrics);
 
-        int[] recoveredSwaras = [14, 26, 50, 51, 56, 59, 69, 70, 71, 75, 76, 85, 86];
+        int[] recoveredSwaras = [14, 26, 50, 51, 56, 59, 69, 70, 71, 75, 76, 85, 86, 90];
         foreach (int number in recoveredSwaras)
             Assert.Equal<SwaraEvent>(cells[number - 1].Expected.Swaras, cells[number - 1].Actual.Swaras);
 
@@ -171,6 +173,29 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
             .Where(entry => entry.pair.Actual.Swaras.Any(swara => swara.MeendToNext)).Select(entry => entry.index).ToArray();
         Assert.Equal(cells.Select((pair, index) => (pair, index))
             .Where(entry => entry.pair.Expected.Swaras.Any(swara => swara.MeendToNext)).Select(entry => entry.index), meendStarts);
+    }
+
+    [Fact]
+    public async Task GenerateAsync_KeharwaScans_PreservesThePageTurnAndBeatGrid()
+    {
+        string? folder = Environment.GetEnvironmentVariable("SAREGAMIDI_REFERENCE_SCANS");
+        string[] names = ["Scan_20261127_153314.jpg", "Scan_20261127_153339.jpg"];
+        if (folder is null || names.Any(name => !File.Exists(Path.Combine(folder, name)))
+            || Environment.GetEnvironmentVariable("SAREGAMIDI_RUN_OCR_BENCHMARK") != "1")
+            Assert.Skip("Requires the local Keharwa scans and OCR benchmark.");
+
+        SourcePage[] pages = names.Select(name => SourcePage.Load(Path.Combine(folder, name))).ToArray();
+        RecognitionDraft draft = await ScanRecognition.GenerateAsync(pages, TaalCatalog.FindByName("Keharwa")!,
+            "अपनी धुन में रहता हूँ", CancellationToken.None);
+        ScoreMaatra[][] lines = WrittenLines(draft.Score).ToArray();
+
+        foreach (ScoreMaatra[] line in lines)
+            output.WriteLine(string.Join(" | ", line.Select(cell => cell.Swaras.Count == 0 ? "" : MaatraNotation.Format(cell.Swaras))));
+
+        Assert.Empty(draft.MissingPages);
+        Assert.Equal([16, 16, 16, 16, 16, 16, 8], lines.Select(line => line.Length));
+        Assert.Equal(["स्थायी", "अंतरा"], draft.Score.Sections.Select(section => section.Name));
+        Assert.Equal([48, 56], draft.Score.Sections.Select(section => section.Maatras.Count));
     }
 
     private static (int Leading, int Trailing) ContinuationEdges(string lyrics)

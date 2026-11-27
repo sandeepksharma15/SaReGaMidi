@@ -39,7 +39,7 @@ public static class MaatraNotation
             string symbol = note.Kind switch
             {
                 SwaraEventKind.Note => FormatOrnaments(note),
-                SwaraEventKind.Sustain => "-",
+                SwaraEventKind.Sustain => note.SustainPrintedAsS ? "S" : "-",
                 SwaraEventKind.Silence => "*",
                 _ => "?"
             };
@@ -60,6 +60,7 @@ public static class MaatraNotation
         foreach (SwaraEvent note in events)
         {
             if (note is null || !Enum.IsDefined(note.Kind) || note.Kind == SwaraEventKind.LyricalContinuation
+                || (note.SustainPrintedAsS && note.Kind != SwaraEventKind.Sustain)
                 || (note.Kind == SwaraEventKind.Note) != note.Pitch.HasValue
                 || (note.Pitch is SwaraPitch pitch && !IsPitchValid(pitch))
                 || (note.Pitch is null && (note.Khatka || note.KanSwara.HasValue || note.MeendToNext
@@ -90,6 +91,8 @@ public static class MaatraNotation
     {
         switch (symbol)
         {
+            case "S":
+                return new SwaraEvent(SwaraEventKind.Sustain, null, duration) { SustainPrintedAsS = true };
             case "-":
                 return new SwaraEvent(SwaraEventKind.Sustain, null, duration);
             case "*":

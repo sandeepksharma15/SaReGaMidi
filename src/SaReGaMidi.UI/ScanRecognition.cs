@@ -76,6 +76,10 @@ internal static class ScanRecognition
                     }
 
                     LyricMarks lyricMarks = cell.HasLyrics ? ink.ReadLyricMarks(cell.Lyrics) : default;
+                    if (symbol is null && cell.HasSwaras && lyricMarks is { Trailing: 1, Body: null }
+                        && ink.ReadLyricMarks(cleaned) is { Trailing: 1, Body: null })
+                        symbol = "S";
+
                     bool lyricSilence = symbol == "*" && cell.HasLyrics && ink.IsLyricSilence(cell.Lyrics);
                     Int32Rect? lyricBody = lyricSilence ? null : lyricMarks.Body
                         ?? (cell.HasLyrics && !lyricMarks.Found ? cell.Lyrics : null);
@@ -337,6 +341,9 @@ internal static class ScanRecognition
     private static string ReadSwaras(string text, bool tivra = false)
     {
         string printed = string.Concat(text.Normalize(NormalizationForm.FormC).Where(character => !char.IsWhiteSpace(character)));
+        if (printed is "S" or "ऽ")
+            return "S";
+
         List<string> tokens = [];
         for (int index = 0; index < printed.Length;)
         {
