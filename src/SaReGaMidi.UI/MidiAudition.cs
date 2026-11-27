@@ -16,28 +16,37 @@ internal sealed class MidiAudition(Action<int> send)
         send(0xB0 | (channel - 1) | (7 << 8) | ((audible ? 100 : 0) << 16));
     }
 
-    internal async Task PlayAsync(byte[] midi, CancellationToken cancellationToken)
+    internal async Task PlayAsync(byte[] midi, CancellationToken cancellationToken, Action<long>? melodyChanged = null)
     {
         MidiFile file = new(new MemoryStream(midi), true);
         var events = Enumerable.Range(0, file.Tracks).SelectMany(track => file.Events[track])
-            .OrderBy(item => item.AbsoluteTime);
+            .OrderBy(item => item.AbsoluteTime).GroupBy(item => item.AbsoluteTime);
         Stopwatch clock = Stopwatch.StartNew();
         long previousTick = 0;
         double milliseconds = 0;
         int microsPerQuarter = 500000;
-        foreach (MidiEvent item in events)
+        foreach (var group in events)
         {
-            milliseconds += (item.AbsoluteTime - previousTick) * (double)microsPerQuarter
+            milliseconds += (group.Key - previousTick) * (double)microsPerQuarter
                 / (1000 * file.DeltaTicksPerQuarterNote);
-            previousTick = item.AbsoluteTime;
+            previousTick = group.Key;
             double remaining = milliseconds - clock.Elapsed.TotalMilliseconds;
             if (remaining >= 1)
                 await Task.Delay(TimeSpan.FromMilliseconds(remaining), cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
-            if (item is TempoEvent tempo)
-                microsPerQuarter = tempo.MicrosecondsPerQuarterNote;
-            else if (item is NoteEvent)
-                send(item.GetAsShortMessage());
+            bool melody = false;
+            foreach (MidiEvent item in group)
+            {
+                if (item is TempoEvent tempo)
+                    microsPerQuarter = tempo.MicrosecondsPerQuarterNote;
+                else if (item is NoteEvent note)
+                {
+                    send(item.GetAsShortMessage());
+                    melody |= note.Channel == 1;
+                }
+            }
+            if (melody)
+                melodyChanged?.Invoke(group.Key);
         }
     }
 }

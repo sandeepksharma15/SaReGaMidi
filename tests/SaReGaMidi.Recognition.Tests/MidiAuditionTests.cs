@@ -29,6 +29,26 @@ public sealed class MidiAuditionTests
     }
 
     [Fact]
+    public async Task PlayAsync_BorrowedSwaras_HighlightsEachAttackAndClearsAfterSustain()
+    {
+        ScoreMaatra source = new(1, MaatraNotation.Parse("Sa:1/3 Sa:2/3"), "", "");
+        ScoreMaatra borrowed = new(1, [], "", "") { BorrowedFrom = 0 };
+        ScoreMaatra hold = new(1, MaatraNotation.Parse("-"), "", "");
+        ScoreMaatra rest = new(1, MaatraNotation.Parse("*"), "", "");
+        CompositionScore score = new("Playback", "Dadra", [new ScoreSection("A", 1, [source, borrowed, hold, rest])]);
+        Dictionary<long, (int Maatra, int Swara)> starts = [];
+        byte[] midi = MidiScoreExport.Render(score, new ScorePass("Repeat", 1, 3), 60, 400, starts);
+        List<long> changes = [];
+
+        await new MidiAudition(_ => { }).PlayAsync(midi, CancellationToken.None, changes.Add);
+
+        Assert.Equal([960L, 1280L, 2880L], changes);
+        Assert.Equal((0, 0), starts[960]);
+        Assert.Equal((0, 1), starts[1280]);
+        Assert.False(starts.ContainsKey(2880));
+    }
+
+    [Fact]
     public void SetAudible_ChangesOnlyTheSelectedChannelVolume()
     {
         List<int> messages = [];

@@ -18,6 +18,12 @@
                     <TextBlock Text="SaReGaMidi" FontWeight="SemiBold" FontSize="18" Margin="10,0,0,0" />
                 </StackPanel>
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                    <Button x:Name="OpenWorkspaceButton" Style="{StaticResource ActionButton}" Click="OpenWorkspace_Click" Margin="0,0,12,0">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" Margin="0,0,8,0" />
+                            <AccessText Text="_Open workspace" />
+                        </StackPanel>
+                    </Button>
                     <Button x:Name="AboutButton" Style="{StaticResource IconButton}" Click="About_Click"
                             ToolTip="About SaReGaMidi" AutomationProperties.Name="About SaReGaMidi" Margin="0,0,4,0">
                         <TextBlock Style="{StaticResource Icon}" Text="&#xE946;" />
@@ -63,7 +69,7 @@
                         <Button Style="{StaticResource ActionButton}" Click="OpenWorkFolder_Click" Margin="0,0,8,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{StaticResource Icon}" Text="&#xED25;" Margin="0,0,8,0" />
-                                <AccessText Text="_Open work folder" />
+                                <AccessText Text="Show in _Explorer" />
                             </StackPanel>
                         </Button>
                         <Button x:Name="TranscribeButton" Content="_Transcribe" Style="{StaticResource PrimaryButton}"

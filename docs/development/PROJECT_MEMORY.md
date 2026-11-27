@@ -37,4 +37,8 @@ The MIDI proof uses Type 1 files, one quarter note per maatra, 960 ticks per qua
 
 In-app playback auditions the exported MIDI through the Windows default MIDI output. Play and Export share passage, tonic and tempo for the open transcription. Live Melody and Theka volume switches affect the audition only.
 
+During audition, highlight the sounding melody swara in the written notation using MIDI event timing. Borrowed maatras highlight the source glyph, and a sustain keeps the preceding glyph highlighted until its note ends.
+
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.
+
+Scale analysis counts principal note attacks in written order, pooling saptaks and counting kan separately. Notes strictly below the adjustable cutoff (default 5%) are rare. The analysis tonic defaults to C♯4.

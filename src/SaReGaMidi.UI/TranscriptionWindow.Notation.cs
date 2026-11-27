@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Documents;
 using System.Windows.Media;
 using SaReGaMidi.Music.Rhythm;
 using SaReGaMidi.Music.Score;
@@ -12,12 +13,35 @@ namespace SaReGaMidi.UI;
 
 public partial class TranscriptionWindow
 {
+    private readonly Dictionary<(int Maatra, int Swara), Panel> _notationGlyphs = [];
+    private (int Maatra, int Swara)? _playingPosition;
+
+    private void HighlightPlayingSwara((int Maatra, int Swara)? position)
+    {
+        if (_playingPosition is { } previous && _notationGlyphs.TryGetValue(previous, out Panel? old))
+        {
+            old.ClearValue(Panel.BackgroundProperty);
+            old.ClearValue(TextElement.ForegroundProperty);
+            old.Resources.Remove("InkBrush");
+        }
+
+        _playingPosition = position;
+        if (position is { } current && _notationGlyphs.TryGetValue(current, out Panel? glyph))
+        {
+            glyph.SetResourceReference(Panel.BackgroundProperty, "AccentBrush");
+            glyph.SetResourceReference(TextElement.ForegroundProperty, "OnAccentBrush");
+            glyph.Resources["InkBrush"] = FindResource("OnAccentBrush");
+            if (glyph.IsVisible)
+                glyph.BringIntoView();
+        }
+    }
+
     private void ScoreTabs_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (e.Source != ScoreTabs || MaatraGrid is null)
             return;
 
-        if (ScoreTabs.SelectedIndex != 0)
+        if (ScoreTabs.SelectedIndex == 1)
             return;
 
         if (!CommitGrid())
@@ -26,7 +50,10 @@ public partial class TranscriptionWindow
             return;
         }
 
-        UpdateBeats();
+        if (ScoreTabs.SelectedIndex == 2)
+            RefreshAnalysis();
+        else
+            UpdateBeats();
     }
 
     private void RenderNotation()
@@ -35,6 +62,7 @@ public partial class TranscriptionWindow
             return;
 
         NotationSheet.Children.Clear();
+        _notationGlyphs.Clear();
         if (_rows.Count == 0)
         {
             TextBlock empty = new() { Text = "Choose a taal, then add the first maatra." };
@@ -153,6 +181,7 @@ public partial class TranscriptionWindow
 
             incoming = outgoing;
         }
+        HighlightPlayingSwara(_playingPosition);
     }
 
     private static void AddNotationColumn(Grid line, int index)
@@ -211,6 +240,11 @@ public partial class TranscriptionWindow
         };
         content.Children.Add(display);
         anchors.AddRange(display.Anchors);
+        for (int swara = 0; swara < display.Anchors.Count; swara++)
+        {
+            if (display.Anchors[swara].Glyph is Panel glyph)
+                _notationGlyphs.Add((index, swara), glyph);
+        }
 
         Button cell = new()
         {

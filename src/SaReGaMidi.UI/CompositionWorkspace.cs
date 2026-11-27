@@ -77,6 +77,11 @@ internal sealed record CompositionWorkspace(string FolderPath, IReadOnlyList<Sou
         if (folderPath is null)
             return null;
 
+        return Open(folderPath);
+    }
+
+    internal static CompositionWorkspace Open(string folderPath)
+    {
         if (!Path.IsPathFullyQualified(folderPath))
             throw new InvalidDataException("The previous workspace path is invalid.");
 
@@ -119,7 +124,37 @@ internal sealed record CompositionWorkspace(string FolderPath, IReadOnlyList<Sou
             .FirstOrDefault();
     }
 
+    internal static IReadOnlyList<WorkspaceListing> ListSaved(string workFolder)
+    {
+        List<WorkspaceListing> entries = [];
+        if (!Directory.Exists(workFolder))
+            return entries;
+
+        foreach (string folder in Directory.EnumerateDirectories(workFolder))
+        {
+            if (Path.GetFileName(folder).StartsWith(".import-", StringComparison.Ordinal))
+                continue;
+            try
+            {
+                using FileStream file = File.OpenRead(Path.Combine(folder, "composition.json"));
+                Manifest? manifest = JsonSerializer.Deserialize<Manifest>(file);
+                if (manifest is not { Version: 1, Pages.Count: > 0 } || manifest.Pages[0] is not ManifestPage first)
+                    continue;
+                string title = ScoreFile.ReadTitle(folder) ?? "Untitled composition";
+                string pages = manifest.Pages.Count == 1 ? "1 page" : $"{manifest.Pages.Count} pages";
+                entries.Add(new(folder, title, $"{pages} · {first.OriginalName} · {Path.GetFileName(folder)}"));
+            }
+            catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+            {
+                // An incomplete or unavailable import cannot be selected.
+            }
+        }
+        return entries.OrderByDescending(entry => Path.GetFileName(entry.Folder), StringComparer.OrdinalIgnoreCase).ToArray();
+    }
+
     private sealed record Manifest(int Version, IReadOnlyList<ManifestPage> Pages);
 
     private sealed record ManifestPage(int Number, string Path, string OriginalName);
 }
+
+internal sealed record WorkspaceListing(string Folder, string Title, string Description);

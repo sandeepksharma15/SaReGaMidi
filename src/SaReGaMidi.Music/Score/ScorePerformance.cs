@@ -39,14 +39,15 @@ public static class ScorePerformance
 
                 MaatraNotation.Validate(swaras);
                 PlaybackTime time = new(beat.Position, 1);
-                foreach (SwaraEvent swara in swaras)
+                for (int swaraIndex = 0; swaraIndex < swaras.Count; swaraIndex++)
                 {
+                    SwaraEvent swara = swaras[swaraIndex];
                     PlaybackTime end = time.Add(swara.Duration);
                     switch (swara.Kind)
                     {
                         case SwaraEventKind.Note:
                             sounding = notes.Count;
-                            notes.Add(new PlaybackNote(beat, swara, time, end));
+                            notes.Add(new PlaybackNote(beat, swara, time, end) { SwaraIndex = swaraIndex });
                             break;
                         case SwaraEventKind.Sustain when sounding is int active:
                             notes[active] = notes[active] with { End = end };
@@ -85,7 +86,10 @@ public sealed record PlaybackTimeline(IReadOnlyList<PlaybackBeat> Beats, IReadOn
 public sealed record PlaybackBeat(int Position, int TaalBeat, string Section, int WrittenIndex, int SwaraSourceIndex,
     string Lyrics);
 
-public sealed record PlaybackNote(PlaybackBeat Beat, SwaraEvent Swara, PlaybackTime Start, PlaybackTime End);
+public sealed record PlaybackNote(PlaybackBeat Beat, SwaraEvent Swara, PlaybackTime Start, PlaybackTime End)
+{
+    public int SwaraIndex { get; init; }
+}
 
 /// <summary>Exact elapsed maatras from the start of this performance.</summary>
 public readonly record struct PlaybackTime(BigInteger Numerator, BigInteger Denominator)

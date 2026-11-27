@@ -13,7 +13,8 @@ internal static class MidiScoreExport
 {
     private const int Resolution = 960;
 
-    internal static byte[] Render(CompositionScore score, ScorePass passage, int sa, int tempo)
+    internal static byte[] Render(CompositionScore score, ScorePass passage, int sa, int tempo,
+        IDictionary<long, (int Maatra, int Swara)>? noteStarts = null)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(tempo, 20);
         ArgumentOutOfRangeException.ThrowIfGreaterThan(tempo, 400);
@@ -64,6 +65,7 @@ internal static class MidiScoreExport
             if (end <= start)
                 throw new InvalidDataException($"The note at written maatra {note.Beat.WrittenIndex + 1} is shorter than one MIDI tick.");
             AddNote(melody, 1, PitchConverter.GetMidiNote(note.Swara.Pitch!.Value, sa), 88, start, end);
+            noteStarts?.Add(start, (note.Beat.SwaraSourceIndex, note.SwaraIndex));
         }
         melody.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));
         drums.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));

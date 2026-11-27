@@ -96,6 +96,15 @@
                                                     KeyboardNavigation.DirectionalNavigation="Cycle" />
                                         <StackPanel x:Name="RowControls" Grid.Column="1" Orientation="Horizontal"
                                                     VerticalAlignment="Center">
+                                            <StackPanel.Style>
+                                                <Style TargetType="StackPanel">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SelectedIndex, RelativeSource={RelativeSource TemplatedParent}}" Value="2">
+                                                            <Setter Property="Visibility" Value="Collapsed" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </StackPanel.Style>
                                             <Button Style="{StaticResource IconButton}" Click="Add_Click"
                                                     ToolTip="Add maatra" AutomationProperties.Name="Add maatra">
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" />
@@ -148,6 +157,27 @@
                                     <DataGridTextColumn Header="Notes / cues" Binding="{Binding Annotation}" Width="*" MinWidth="135" />
                                 </DataGrid.Columns>
                             </DataGrid>
+                        </TabItem>
+                        <TabItem Header="_Analysis" Style="{StaticResource WorkspaceTab}" Margin="6,0,0,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                                <StackPanel Margin="12">
+                                    <WrapPanel VerticalAlignment="Center">
+                                        <StackPanel Margin="0,0,24,12">
+                                            <Label Content="Base note (Sa)" Target="{Binding ElementName=AnalysisSa}" Padding="0,0,0,4" />
+                                            <ComboBox x:Name="AnalysisSa" MinWidth="100" SelectionChanged="AnalysisSa_Changed" />
+                                        </StackPanel>
+                                        <StackPanel Margin="0,0,0,12">
+                                            <Label Content="{Binding ElementName=RareCutoff, Path=Value}"
+                                                   Target="{Binding ElementName=RareCutoff}" Padding="0,0,0,4" ContentStringFormat="Rare below {0:0}%" />
+                                            <Slider x:Name="RareCutoff" Minimum="0" Maximum="100" Value="5" TickFrequency="1"
+                                                    IsSnapToTickEnabled="True" Width="176" VerticalAlignment="Center"
+                                                    AutomationProperties.Name="Rare note cutoff in percent" ValueChanged="RareCutoff_Changed" />
+                                        </StackPanel>
+                                    </WrapPanel>
+                                    <TextBlock x:Name="AnalysisSummary" Style="{StaticResource MutedText}" TextWrapping="Wrap" />
+                                    <StackPanel x:Name="AnalysisResults" Margin="0,12,0,0" />
+                                </StackPanel>
+                            </ScrollViewer>
                         </TabItem>
                     </TabControl>
                 </DockPanel>

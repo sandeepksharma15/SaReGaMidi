@@ -38,6 +38,8 @@ public partial class TranscriptionWindow : Window
         SourcePages.SelectedIndex = Math.Max(0, selectedPage);
         TaalBox.ItemsSource = TaalCatalog.All;
         MaatraGrid.ItemsSource = _rows;
+        AnalysisSa.ItemsSource = Enumerable.Range(48, 36).Select(note => Music.WesternNoteNames.Format(note)).ToArray();
+        AnalysisSa.SelectedIndex = 61 - 48;
         UpdateBeats();
     }
 
@@ -420,12 +422,14 @@ public partial class TranscriptionWindow : Window
         }
 
         RenderNotation();
+        RefreshAnalysis();
     }
 
     private void MarkEdited()
     {
         if (_canEdit && !_busy)
         {
+            _playbackCancellation?.Cancel();
             _dirty = true;
             UpdateActions();
         }

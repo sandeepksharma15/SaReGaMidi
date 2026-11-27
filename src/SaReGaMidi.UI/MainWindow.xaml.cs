@@ -29,6 +29,7 @@ public partial class MainWindow : Window
 
         WorkspaceSettings settings = application.Settings;
         StartImportButton.IsEnabled = false;
+        OpenWorkspaceButton.IsEnabled = false;
         StatusText.Text = "Checking for the previous workspace...";
 
         try
@@ -56,6 +57,7 @@ public partial class MainWindow : Window
         finally
         {
             StartImportButton.IsEnabled = true;
+            OpenWorkspaceButton.IsEnabled = true;
         }
     }
 
@@ -70,6 +72,33 @@ public partial class MainWindow : Window
         ShowWorkspace(workspace);
         StatusText.Text = $"Imported {PageCountText.Text}. The scans are saved and ready for transcription.";
         RememberWorkspace(application, workspace);
+    }
+
+    private async void OpenWorkspace_Click(object sender, RoutedEventArgs e)
+    {
+        App application = (App)Application.Current;
+        WorkspacePicker picker = new(application.Settings.WorkFolder) { Owner = this };
+        if (picker.ShowDialog() != true || picker.SelectedFolder is not string folder)
+            return;
+
+        IsEnabled = false;
+        StatusText.Text = "Opening workspace...";
+        try
+        {
+            CompositionWorkspace workspace = await Task.Run(() => CompositionWorkspace.Open(folder));
+            ShowWorkspace(workspace);
+            StatusText.Text = $"Opened {Path.GetFileName(folder)} with {PageCountText.Text}.";
+            RememberWorkspace(application, workspace);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException
+            or ArgumentException or NotSupportedException or FormatException or InvalidDataException)
+        {
+            StatusText.Text = $"Could not open the workspace. {exception.Message}";
+        }
+        finally
+        {
+            IsEnabled = true;
+        }
     }
 
     private void RememberWorkspace(App application, CompositionWorkspace workspace)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading;
 using System.Windows;
@@ -43,7 +44,8 @@ public partial class TranscriptionWindow
             MidiExportWindow? options = ChooseMidiSettings(score, playback: true);
             if (options is null)
                 return;
-            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo);
+            Dictionary<long, (int Maatra, int Swara)> starts = [];
+            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo, starts);
             if (MidiOut.NumberOfDevices == 0)
                 throw new InvalidOperationException("Windows has no MIDI output device available.");
 
@@ -54,14 +56,17 @@ public partial class TranscriptionWindow
             try
             {
                 ApplyTrackVolumes();
+                ScoreTabs.SelectedIndex = 0;
                 PlayButton.Content = "■  _Stop";
                 StatusText.Text = $"Playing {options.Passage.Name} · {options.Tempo} maatras per minute";
                 UpdateActions();
-                await _audition.PlayAsync(midi, cancellation.Token);
+                await _audition.PlayAsync(midi, cancellation.Token, tick =>
+                    HighlightPlayingSwara(starts.TryGetValue(tick, out var position) ? position : null));
                 StatusText.Text = "Playback finished.";
             }
             finally
             {
+                HighlightPlayingSwara(null);
                 _audition = null;
                 _playbackCancellation = null;
                 output.Reset();

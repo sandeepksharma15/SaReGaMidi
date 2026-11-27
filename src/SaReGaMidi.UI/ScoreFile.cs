@@ -38,6 +38,24 @@ internal sealed class ScoreFile(string folderPath, int pageCount)
         }
     }
 
+    internal static string? ReadTitle(string folder)
+    {
+        try
+        {
+            using FileStream stream = File.OpenRead(Path.Combine(folder, "score.json"));
+            using JsonDocument document = JsonDocument.Parse(stream);
+            if (document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("Score", out JsonElement score) && score.ValueKind == JsonValueKind.Object
+                && score.TryGetProperty("Title", out JsonElement title) && title.ValueKind == JsonValueKind.String)
+                return title.GetString();
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException or JsonException)
+        {
+            // Source pages can still be opened without a readable score.
+        }
+        return null;
+    }
+
     internal async Task SaveAsync(CompositionScore score)
     {
         Validate(score);
