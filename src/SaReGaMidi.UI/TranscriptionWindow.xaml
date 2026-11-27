@@ -18,6 +18,8 @@
                               Click="Track_Click" VerticalAlignment="Center" />
                     <CheckBox x:Name="ThekaBox" Content="Theka" IsChecked="True" Margin="10,0,12,0"
                               Click="Track_Click" VerticalAlignment="Center" />
+                    <CheckBox x:Name="ChordsBox" Content="Chords" IsChecked="True" Margin="0,0,10,0"
+                              Click="Track_Click" VerticalAlignment="Center" />
                 </StackPanel>
             </StatusBarItem>
             <StatusBarItem>

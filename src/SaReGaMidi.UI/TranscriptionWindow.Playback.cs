@@ -15,16 +15,22 @@ public partial class TranscriptionWindow
     private ScorePass? _lastPassage;
     private int _sa = 60;
     private int _tempo = 90;
+    private bool _loop;
+    private bool _smoothChords;
 
     private MidiExportWindow? ChooseMidiSettings(CompositionScore score, bool playback)
     {
-        MidiExportWindow options = new(score, _lastPassage, _sa, _tempo, playback) { Owner = this };
+        MidiExportWindow options = new(score, _lastPassage, _sa, _tempo, playback, playback ? SelectedPhrase() : null,
+            _loop, _smoothChords) { Owner = this };
         if (options.ShowDialog() != true)
             return null;
 
         _lastPassage = options.Passage;
         _sa = options.Sa;
         _tempo = options.Tempo;
+        _smoothChords = options.SmoothChords;
+        if (playback)
+            _loop = options.Loop;
         return options;
     }
 
@@ -45,7 +51,8 @@ public partial class TranscriptionWindow
             if (options is null)
                 return;
             Dictionary<long, (int Maatra, int Swara)> starts = [];
-            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo, starts);
+            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo, starts,
+                (int)RareCutoff.Value, immediateStart: options.Passage == SelectedPhrase(), smoothChords: _smoothChords);
             if (MidiOut.NumberOfDevices == 0)
                 throw new InvalidOperationException("Windows has no MIDI output device available.");
 
@@ -60,8 +67,18 @@ public partial class TranscriptionWindow
                 PlayButton.Content = "■  _Stop";
                 StatusText.Text = $"Playing {options.Passage.Name} · {options.Tempo} maatras per minute";
                 UpdateActions();
-                await _audition.PlayAsync(midi, cancellation.Token, tick =>
-                    HighlightPlayingSwara(starts.TryGetValue(tick, out var position) ? position : null));
+                do
+                {
+                    await _audition.PlayAsync(midi, cancellation.Token, tick =>
+                        HighlightPlayingSwara(starts.TryGetValue(tick, out var position) ? position : null), starts.ContainsKey);
+                    if (_loop)
+                    {
+                        output.Reset();
+                        output.Send(new PitchWheelChangeEvent(0, 1, 8192).GetAsShortMessage());
+                        ApplyTrackVolumes();
+                        HighlightPlayingSwara(null);
+                    }
+                } while (_loop && !cancellation.IsCancellationRequested);
                 StatusText.Text = "Playback finished.";
             }
             finally
@@ -70,6 +87,8 @@ public partial class TranscriptionWindow
                 _audition = null;
                 _playbackCancellation = null;
                 output.Reset();
+                // Stop may interrupt a bend before its reset event is reached.
+                output.Send(new PitchWheelChangeEvent(0, 1, 8192).GetAsShortMessage());
             }
         }
         catch (OperationCanceledException)
@@ -104,6 +123,7 @@ public partial class TranscriptionWindow
     {
         _audition?.SetAudible(1, MelodyBox.IsChecked == true);
         _audition?.SetAudible(10, ThekaBox.IsChecked == true);
+        _audition?.SetAudible(2, ChordsBox.IsChecked == true);
     }
 
     protected override void OnClosed(EventArgs e)

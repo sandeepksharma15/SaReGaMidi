@@ -7,16 +7,22 @@ namespace SaReGaMidi.UI;
 
 public partial class MidiExportWindow : Window
 {
-    internal MidiExportWindow(CompositionScore score, ScorePass? previousPassage, int sa, int tempo, bool playback)
+    internal MidiExportWindow(CompositionScore score, ScorePass? previousPassage, int sa, int tempo, bool playback,
+        ScorePass? selection, bool loop, bool smoothChords)
     {
         InitializeComponent();
+        HarmonyBox.SelectedIndex = smoothChords ? 1 : 0;
         if (playback)
         {
             Title = "Play transcription";
             ContinueButton.Content = "_Play";
+            LoopBox.Visibility = Visibility.Visible;
+            LoopBox.IsChecked = loop;
         }
         List<ScorePass> passages = [new("Whole written score", 0, score.Sections.Sum(section => section.Maatras.Count))];
         passages.AddRange(score.Passes);
+        if (selection is not null)
+            passages.Add(selection);
         int start = 0;
         foreach (ScoreSection section in score.Sections)
         {
@@ -28,6 +34,8 @@ public partial class MidiExportWindow : Window
         PassageBox.SelectedIndex = score.Passes.Count == 0 ? 0 : 1;
         if (previousPassage is not null && passages.Contains(previousPassage))
             PassageBox.SelectedItem = previousPassage;
+        if (selection is not null)
+            PassageBox.SelectedItem = selection;
         TempoBox.Text = tempo.ToString();
         string[] names = ["C", "C♯", "D", "E♭", "E", "F", "F♯", "G", "A♭", "A", "B♭", "B"];
         SaBox.ItemsSource = Enumerable.Range(48, 36).Select(note => $"{names[note % 12]}{note / 12 - 1} · MIDI {note}").ToArray();
@@ -35,6 +43,8 @@ public partial class MidiExportWindow : Window
     }
 
     internal ScorePass Passage => (ScorePass)PassageBox.SelectedItem;
+    internal bool Loop => LoopBox.IsChecked == true;
+    internal bool SmoothChords => HarmonyBox.SelectedIndex == 1;
     internal int Sa => SaBox.SelectedIndex + 48;
     internal int Tempo { get; private set; }
 

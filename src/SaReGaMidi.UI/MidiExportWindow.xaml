@@ -10,8 +10,16 @@
         <ComboBox x:Name="SaBox" Margin="0,0,0,12" />
         <Label Content="_Tempo (maatras per minute)" Target="{Binding ElementName=TempoBox}" />
         <TextBox x:Name="TempoBox" Text="90" Padding="6" />
+        <Label Content="_Chords" Target="{Binding ElementName=HarmonyBox}" Margin="0,8,0,0" />
+        <ComboBox x:Name="HarmonyBox">
+            <ComboBoxItem Content="Root on melody" />
+            <ComboBoxItem Content="Smooth changes" />
+        </ComboBox>
+        <TextBlock Margin="0,4,0,8" Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                   Text="Root on melody favours a scale chord built on the first swara of each vibhaag. Smooth changes favours a chord containing that swara with less movement between voices." />
+        <CheckBox x:Name="LoopBox" Content="_Loop passage until stopped" Visibility="Collapsed" />
         <TextBlock Margin="0,12" Style="{StaticResource MutedText}" TextWrapping="Wrap"
-                   Text="Melody uses the written pitches and theka uses General MIDI drums. Each maatra occupies one quarter note." />
+                   Text="Each maatra occupies one quarter note. Melody, theka and chords use separate tracks." />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" IsCancel="True" Style="{StaticResource ActionButton}" Margin="0,0,8,0" />
             <Button x:Name="ContinueButton" Content="Choose file…" IsDefault="True" Click="Continue_Click" Style="{StaticResource PrimaryButton}" />

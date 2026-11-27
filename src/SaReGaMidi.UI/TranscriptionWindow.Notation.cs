@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using SaReGaMidi.Music.Rhythm;
 using SaReGaMidi.Music.Score;
@@ -15,6 +16,34 @@ public partial class TranscriptionWindow
 {
     private readonly Dictionary<(int Maatra, int Swara), Panel> _notationGlyphs = [];
     private (int Maatra, int Swara)? _playingPosition;
+    private TranscriptionRow? _phraseAnchor;
+    private TranscriptionRow? _phraseEnd;
+    private readonly List<Button> _notationCells = [];
+
+    private ScorePass? SelectedPhrase()
+    {
+        int anchor = _phraseAnchor is null ? -1 : _rows.IndexOf(_phraseAnchor);
+        int end = _phraseEnd is null ? -1 : _rows.IndexOf(_phraseEnd);
+        if (anchor < 0 || end < 0)
+            return null;
+        int first = Math.Min(anchor, end);
+        int last = Math.Max(anchor, end);
+        return new ScorePass($"Selection · maatras {first + 1}–{last + 1}", first, last - first + 1);
+    }
+
+    private void ShowPhraseSelection()
+    {
+        ScorePass? phrase = SelectedPhrase();
+        for (int index = 0; index < _notationCells.Count; index++)
+        {
+            bool selected = phrase is null ? index == MaatraGrid.SelectedIndex
+                : index >= phrase.StartMaatra && index < phrase.StartMaatra + phrase.MaatraCount;
+            if (selected)
+                _notationCells[index].SetResourceReference(BackgroundProperty, "SelectionBrush");
+            else
+                _notationCells[index].ClearValue(BackgroundProperty);
+        }
+    }
 
     private void HighlightPlayingSwara((int Maatra, int Swara)? position)
     {
@@ -63,6 +92,7 @@ public partial class TranscriptionWindow
 
         NotationSheet.Children.Clear();
         _notationGlyphs.Clear();
+        _notationCells.Clear();
         if (_rows.Count == 0)
         {
             TextBlock empty = new() { Text = "Choose a taal, then add the first maatra." };
@@ -182,6 +212,7 @@ public partial class TranscriptionWindow
             incoming = outgoing;
         }
         HighlightPlayingSwara(_playingPosition);
+        ShowPhraseSelection();
     }
 
     private static void AddNotationColumn(Grid line, int index)
@@ -254,16 +285,24 @@ public partial class TranscriptionWindow
             Tag = index,
             ToolTip = row.BorrowedFrom is TranscriptionRow source && blank
                 ? $"Blank in print. Uses the swaras from maatra {_rows.IndexOf(source) + 1} during the pass."
-                : string.IsNullOrWhiteSpace(row.Annotation) ? "Edit maatra" : row.Annotation
+                : string.IsNullOrWhiteSpace(row.Annotation) ? "Click to select, Shift-click to extend, double-click to edit." : row.Annotation
         };
         cell.SetResourceReference(StyleProperty, "NotationCell");
-        if (MaatraGrid.SelectedIndex == index)
-            cell.SetResourceReference(BackgroundProperty, "SelectionBrush");
+        _notationCells.Add(cell);
 
         string beatLabel = string.IsNullOrEmpty(row.Beat) ? string.Empty : $", beat {row.Beat}";
         string reviewLabel = needsReview ? $", {row.Annotation}" : string.Empty;
         AutomationProperties.SetName(cell, $"Maatra {index + 1}{beatLabel}, {row.Swaras}, {row.Lyrics}{reviewLabel}");
         cell.Click += NotationCell_Click;
+        cell.MouseDoubleClick += (_, e) => { e.Handled = true; EditMaatra(index); };
+        cell.KeyDown += (_, e) =>
+        {
+            if (e.Key == Key.F2)
+            {
+                e.Handled = true;
+                EditMaatra(index);
+            }
+        };
 
         Border boundary = new()
         {
@@ -276,8 +315,14 @@ public partial class TranscriptionWindow
 
     private void NotationCell_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is Button { Tag: int index })
-            EditMaatra(index);
+        if (sender is not Button { Tag: int index })
+            return;
+        if (!Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) || SelectedPhrase() is null)
+            _phraseAnchor = _rows[index];
+        _phraseEnd = _rows[index];
+        MaatraGrid.SelectedIndex = index;
+        ShowPhraseSelection();
+        StatusText.Text = $"{SelectedPhrase()?.Name}. Shift-click to extend, Play to listen, or double-click to edit.";
     }
 
     private void EditMaatra(int index)

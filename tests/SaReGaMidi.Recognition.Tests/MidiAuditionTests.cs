@@ -13,12 +13,12 @@ namespace SaReGaMidi.Recognition.Tests;
 public sealed class MidiAuditionTests
 {
     [Fact]
-    public async Task PlayAsync_ReferencePickup_SendsBothExportedTracksInOrder()
+    public async Task PlayAsync_ReferencePickup_SendsAllExportedTracksInOrder()
     {
         CompositionScore score = RanjishHiSahiDraft.Create();
         byte[] midi = MidiScoreExport.Render(score, new ScorePass("Pickup to sam", 0, 3), 60, 400);
         MidiFile file = new(new MemoryStream(midi), true);
-        int[] expected = file.Events[0].Concat(file.Events[1]).OfType<NoteEvent>()
+        int[] expected = file.Events[0].Concat(file.Events[1]).Concat(file.Events[2]).OfType<NoteEvent>()
             .OrderBy(note => note.AbsoluteTime).Select(note => note.GetAsShortMessage()).ToArray();
         List<int> sent = [];
         MidiAudition audition = new(sent.Add);
@@ -46,6 +46,20 @@ public sealed class MidiAuditionTests
         Assert.Equal((0, 0), starts[960]);
         Assert.Equal((0, 1), starts[1280]);
         Assert.False(starts.ContainsKey(2880));
+    }
+
+    [Fact]
+    public async Task PlayAsync_Meend_SendsExportedBendRangeAndWheelEvents()
+    {
+        ScoreMaatra cell = new(1, MaatraNotation.Parse("GaKomal~ Sa"), "", "");
+        CompositionScore score = new("Glide", "Dadra", [new ScoreSection("A", 1, [cell])]);
+        byte[] midi = MidiScoreExport.Render(score, new ScorePass("A", 0, 1), 60, 400);
+        MidiFile file = new(new MemoryStream(midi), true);
+        var expected = file.Events[0].Concat(file.Events[1]).Concat(file.Events[2]).Where(e => e is NoteEvent or ControlChangeEvent or PitchWheelChangeEvent)
+            .OrderBy(e => e.AbsoluteTime).Select(e => e.GetAsShortMessage());
+        List<int> sent = [];
+        await new MidiAudition(sent.Add).PlayAsync(midi, CancellationToken.None);
+        Assert.Equal(expected, sent);
     }
 
     [Fact]

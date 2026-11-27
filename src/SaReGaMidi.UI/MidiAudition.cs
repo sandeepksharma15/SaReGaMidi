@@ -16,7 +16,8 @@ internal sealed class MidiAudition(Action<int> send)
         send(0xB0 | (channel - 1) | (7 << 8) | ((audible ? 100 : 0) << 16));
     }
 
-    internal async Task PlayAsync(byte[] midi, CancellationToken cancellationToken, Action<long>? melodyChanged = null)
+    internal async Task PlayAsync(byte[] midi, CancellationToken cancellationToken, Action<long>? melodyChanged = null,
+        Func<long, bool>? isWrittenOnset = null)
     {
         MidiFile file = new(new MemoryStream(midi), true);
         var events = Enumerable.Range(0, file.Tracks).SelectMany(track => file.Events[track])
@@ -44,8 +45,10 @@ internal sealed class MidiAudition(Action<int> send)
                     send(item.GetAsShortMessage());
                     melody |= note.Channel == 1;
                 }
+                else if (item is ControlChangeEvent or PitchWheelChangeEvent)
+                    send(item.GetAsShortMessage());
             }
-            if (melody)
+            if (melody || isWrittenOnset?.Invoke(group.Key) == true)
                 melodyChanged?.Invoke(group.Key);
         }
     }

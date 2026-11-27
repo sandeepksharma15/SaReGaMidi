@@ -130,7 +130,8 @@ public partial class TranscriptionWindow : Window
             if (options is null)
                 return;
 
-            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo);
+            byte[] midi = MidiScoreExport.Render(score, options.Passage, options.Sa, options.Tempo,
+                rareCutoff: (int)RareCutoff.Value, smoothChords: options.SmoothChords);
             string folder = Path.Combine(_workspace.FolderPath, "artifacts");
             Directory.CreateDirectory(folder);
             Microsoft.Win32.SaveFileDialog dialog = new()
