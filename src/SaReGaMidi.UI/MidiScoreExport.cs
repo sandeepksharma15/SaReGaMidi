@@ -25,6 +25,8 @@ internal static class MidiScoreExport
         IList<MidiEvent> melody = file.AddTrack();
         IList<MidiEvent> drums = file.AddTrack();
         IList<MidiEvent> chords = file.AddTrack();
+        IList<MidiEvent> bass = file.AddTrack();
+        bass.Add(new TextEvent("Bass", MetaEventType.SequenceTrackName, 0));
         chords.Add(new TextEvent("Chords", MetaEventType.SequenceTrackName, 0));
         melody.Add(new TextEvent("Melody", MetaEventType.SequenceTrackName, 0));
         melody.Add(new TempoEvent((int)Math.Round(60_000_000d / tempo), 0));
@@ -73,7 +75,7 @@ internal static class MidiScoreExport
 
         List<MelodyNote> notes = [];
         int[] scale = FrequentOffsets(score, rareCutoff);
-        WriteChords(chords, taal, timeline, offsets, scale, sa, smoothChords);
+        WriteHarmony(chords, bass, taal, timeline, offsets, scale, sa, smoothChords);
         foreach (PlaybackNote note in timeline.Notes)
         {
             long start = Tick(note.Start) + offsets[note.Beat.Position];
@@ -135,6 +137,7 @@ internal static class MidiScoreExport
         melody.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));
         drums.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));
         chords.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));
+        bass.Add(new MetaEvent(MetaEventType.EndTrack, 0, elapsed * Resolution));
         using MemoryStream output = new();
         MidiFile.Export(output, file);
         return output.ToArray();
@@ -155,22 +158,23 @@ internal static class MidiScoreExport
         }
     }
 
-    private static void WriteChords(IList<MidiEvent> track, Taal taal, PlaybackTimeline timeline, long[] offsets,
+    private static void WriteHarmony(IList<MidiEvent> track, IList<MidiEvent> bass, Taal taal, PlaybackTimeline timeline, long[] offsets,
         int[] scale, int sa, bool smooth)
     {
-        Dictionary<int, int> divisions = [];
+        Dictionary<int, Vibhaag> divisions = [];
         int firstBeat = 1;
         foreach (Vibhaag division in taal.Vibhaags)
         {
-            divisions.Add(firstBeat, division.Theka.Count);
+            divisions.Add(firstBeat, division);
             firstBeat += division.Theka.Count;
         }
         var attacks = timeline.Notes.ToLookup(note => note.Beat.Position);
         int[]? previous = null;
         for (int pos = 0; pos < timeline.Beats.Count; pos++)
         {
-            if (!divisions.TryGetValue(timeline.Beats[pos].TaalBeat, out int length))
+            if (!divisions.TryGetValue(timeline.Beats[pos].TaalBeat, out Vibhaag? division))
                 continue;
+            int length = division.Theka.Count;
             int end = pos + 1;
             while (end < timeline.Beats.Count && end < pos + length && offsets[end] == offsets[pos]
                 && timeline.Beats[end].Section == timeline.Beats[pos].Section)
@@ -179,17 +183,29 @@ internal static class MidiScoreExport
             if (first is null)
                 continue;
             int degree = (int)first.Swara.Pitch!.Value.Swara;
-            int[] chord = ChooseChord(scale, degree, sa, smooth ? previous : null);
+            var (root, chord) = ChooseChord(scale, degree, sa, smooth ? previous : null);
+            if (chord.Length == 0)
+                continue;
+            long startTick = (long)pos * Resolution + offsets[pos];
+            long endTick = (long)end * Resolution + offsets[pos];
             foreach (int pitch in chord)
             {
                 int playable = pitch < 0 ? pitch + 12 : pitch > 127 ? pitch - 12 * ((pitch - 127 + 11) / 12) : pitch;
-                AddNote(track, 2, playable, 60, (long)pos * Resolution + offsets[pos], (long)end * Resolution + offsets[pos]);
+                AddNote(track, 2, playable, 60, startTick, endTick);
             }
+            if (previous is null)
+                bass.Add(new PatchChangeEvent(startTick, 3, 32)); // General MIDI acoustic bass.
+            int bassRoot = 28 + (sa + root - 28 + 120) % 12;
+            bool playFifth = end - pos >= 3 && !division.IsKhali && chord.Any(p => (p - sa - root + 120) % 12 == 7);
+            long rootEnd = playFifth ? endTick - Resolution : endTick;
+            AddNote(bass, 3, bassRoot, division.IsKhali ? 54 : 76, startTick, rootEnd);
+            if (playFifth)
+                AddNote(bass, 3, bassRoot + 7, 62, rootEnd, endTick);
             previous = chord;
         }
     }
 
-    private static int[] ChooseChord(int[] scale, int degree, int sa, int[]? previous)
+    private static (int Root, int[] Notes) ChooseChord(int[] scale, int degree, int sa, int[]? previous)
     {
         List<(int Root, int[] Notes)> candidates = [];
         foreach (int root in scale)
@@ -208,15 +224,17 @@ internal static class MidiScoreExport
             }
         }
         // Prefer a chord containing the attack. For an out-of-scale attack use the closest scale harmony.
-        int[]? best = candidates.OrderBy(c => c.Notes.Min(p =>
+        var best = candidates.OrderBy(c => c.Notes.Min(p =>
             Math.Min((p - sa - degree + 120) % 12, (sa + degree - p + 120) % 12)))
             .ThenBy(c => previous is { Length: 3 } ? c.Notes.Zip(previous, (a, b) => Math.Abs(a - b)).Sum() : 0)
-            .ThenBy(c => c.Root == degree ? 0 : 1).Select(c => c.Notes).FirstOrDefault();
+            .ThenBy(c => c.Root == degree ? 0 : 1).FirstOrDefault();
         // A sparse scale may have no complete triad. Use the available root and fifth if present.
-        if (best is not null || scale.Length == 0)
-            return best ?? [];
+        if (best.Notes is not null)
+            return best;
+        if (scale.Length == 0)
+            return (0, []);
         int bass = scale.Contains(degree) ? degree : scale[0];
-        return scale.Contains((bass + 7) % 12) ? [sa - 12 + bass, sa - 5 + bass] : [sa - 12 + bass];
+        return (bass, scale.Contains((bass + 7) % 12) ? [sa - 12 + bass, sa - 5 + bass] : [sa - 12 + bass]);
     }
 
     private static int[] FrequentOffsets(CompositionScore score, int cutoff)

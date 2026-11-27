@@ -18,7 +18,7 @@ public sealed class MidiAuditionTests
         CompositionScore score = RanjishHiSahiDraft.Create();
         byte[] midi = MidiScoreExport.Render(score, new ScorePass("Pickup to sam", 0, 3), 60, 400);
         MidiFile file = new(new MemoryStream(midi), true);
-        int[] expected = file.Events[0].Concat(file.Events[1]).Concat(file.Events[2]).OfType<NoteEvent>()
+        int[] expected = Enumerable.Range(0, file.Tracks).SelectMany(track => file.Events[track]).Where(e => e is NoteEvent or PatchChangeEvent)
             .OrderBy(note => note.AbsoluteTime).Select(note => note.GetAsShortMessage()).ToArray();
         List<int> sent = [];
         MidiAudition audition = new(sent.Add);
@@ -55,7 +55,8 @@ public sealed class MidiAuditionTests
         CompositionScore score = new("Glide", "Dadra", [new ScoreSection("A", 1, [cell])]);
         byte[] midi = MidiScoreExport.Render(score, new ScorePass("A", 0, 1), 60, 400);
         MidiFile file = new(new MemoryStream(midi), true);
-        var expected = file.Events[0].Concat(file.Events[1]).Concat(file.Events[2]).Where(e => e is NoteEvent or ControlChangeEvent or PitchWheelChangeEvent)
+        var expected = Enumerable.Range(0, file.Tracks).SelectMany(track => file.Events[track])
+            .Where(e => e is NoteEvent or ControlChangeEvent or PitchWheelChangeEvent or PatchChangeEvent)
             .OrderBy(e => e.AbsoluteTime).Select(e => e.GetAsShortMessage());
         List<int> sent = [];
         await new MidiAudition(sent.Add).PlayAsync(midi, CancellationToken.None);

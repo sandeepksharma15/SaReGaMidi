@@ -20,6 +20,8 @@
                               Click="Track_Click" VerticalAlignment="Center" />
                     <CheckBox x:Name="ChordsBox" Content="Chords" IsChecked="True" Margin="0,0,10,0"
                               Click="Track_Click" VerticalAlignment="Center" />
+                    <CheckBox x:Name="BassBox" Content="Bass" IsChecked="True" Margin="0,0,10,0"
+                              Click="Track_Click" VerticalAlignment="Center" />
                 </StackPanel>
             </StatusBarItem>
             <StatusBarItem>

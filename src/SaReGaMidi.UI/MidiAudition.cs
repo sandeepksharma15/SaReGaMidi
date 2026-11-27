@@ -45,7 +45,7 @@ internal sealed class MidiAudition(Action<int> send)
                     send(item.GetAsShortMessage());
                     melody |= note.Channel == 1;
                 }
-                else if (item is ControlChangeEvent or PitchWheelChangeEvent)
+                else if (item is ControlChangeEvent or PitchWheelChangeEvent or PatchChangeEvent)
                     send(item.GetAsShortMessage());
             }
             if (melody || isWrittenOnset?.Invoke(group.Key) == true)

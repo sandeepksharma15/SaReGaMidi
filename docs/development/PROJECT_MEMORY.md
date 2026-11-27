@@ -3,7 +3,7 @@
 ## Product decisions
 
 - Accept printed Hindustani compositions in Bhatkhande notation. Keep an internal composition representation usable for on-screen notation, printing, and MIDI export.
-- Export melody, theka and chords as separate MIDI tracks on channels 1, 10 and 2 respectively. Mixcraft is the first DAW targeted.
+- Export melody, theka, chords and bass as separate MIDI tracks on channels 1, 10, 2 and 3 respectively. Bass plays the harmonic root at each harmonised vibhaag, adding the perfect fifth of the chord on the last maatra of non-khali divisions lasting at least three maatras. Khali uses a softer held root. Mixcraft is the first DAW targeted.
 - Derive the accompaniment from a standard tabla theka for the composition's taal. Keep the bol pattern independent of the playback instrument so it can also drive a Western drum kit.
 
 ## Implementation decisions
@@ -35,7 +35,7 @@
 
 The MIDI proof uses Type 1 files, one quarter note per maatra, 960 ticks per quarter, and one bar per taal cycle. An opening pickup keeps its beat offset from sam. The export dialog offers written order and saved passages. Melody uses the principal pitches and sustains. Theka uses a separate General MIDI drum mapping on channel 10. Meend uses a linear melody-channel pitch bend through contiguous written swaras, with the destination articulated on its written beat. A rest or the end of a passage interrupts a link. A kan swar sounds softly on the written onset and takes one eighth of the written subdivision before any sustain. Both attacks highlight the same printed glyph group. A bracketed khatka divides its written time equally among the principal, next higher scale swara, next lower scale swara and principal again. Play and Export take neighbours from the full composition using the current Analysis cutoff. An outgoing meend starts on the returning principal. Manual verification in Mixcraft is pending.
 
-In-app playback auditions the exported MIDI through the Windows default MIDI output. Play and Export share passage, tonic and tempo for the open transcription. Live Melody, Theka and Chords switches affect the audition only. A selected phrase starts immediately at its written taal beat and can loop. The theka fills the Sthayi-to-Antara gap, or plays one extra cycle when the two melodies meet without a gap. Chords start on vibhaag boundaries using the frequent scale and the first principal attack in the division. Playback and export offer melody-rooted harmony or smoother voice leading.
+In-app playback auditions the exported MIDI through the Windows default MIDI output. Play and Export share passage, tonic and tempo for the open transcription. Live Melody, Theka, Chords and Bass switches affect the audition only. A selected phrase starts immediately at its written taal beat and can loop. The theka fills the Sthayi-to-Antara gap, or plays one extra cycle when the two melodies meet without a gap. Chords start on vibhaag boundaries using the frequent scale and the first principal attack in the division. Playback and export offer melody-rooted harmony or smoother voice leading.
 
 During audition, highlight the sounding melody swara in the written notation using MIDI event timing. Borrowed maatras highlight the source glyph, and a sustain keeps the preceding glyph highlighted until its note ends.
 

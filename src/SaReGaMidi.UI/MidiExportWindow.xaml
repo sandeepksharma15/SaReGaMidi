@@ -19,7 +19,7 @@
                    Text="Root on melody favours a scale chord built on the first swara of each vibhaag. Smooth changes favours a chord containing that swara with less movement between voices." />
         <CheckBox x:Name="LoopBox" Content="_Loop passage until stopped" Visibility="Collapsed" />
         <TextBlock Margin="0,12" Style="{StaticResource MutedText}" TextWrapping="Wrap"
-                   Text="Each maatra occupies one quarter note. Melody, theka and chords use separate tracks." />
+                   Text="Each maatra occupies one quarter note. Melody, theka, chords and bass use separate tracks." />
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
             <Button Content="Cancel" IsCancel="True" Style="{StaticResource ActionButton}" Margin="0,0,8,0" />
             <Button x:Name="ContinueButton" Content="Choose file…" IsDefault="True" Click="Continue_Click" Style="{StaticResource PrimaryButton}" />

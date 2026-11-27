@@ -124,6 +124,7 @@ public partial class TranscriptionWindow
         _audition?.SetAudible(1, MelodyBox.IsChecked == true);
         _audition?.SetAudible(10, ThekaBox.IsChecked == true);
         _audition?.SetAudible(2, ChordsBox.IsChecked == true);
+        _audition?.SetAudible(3, BassBox.IsChecked == true);
     }
 
     protected override void OnClosed(EventArgs e)

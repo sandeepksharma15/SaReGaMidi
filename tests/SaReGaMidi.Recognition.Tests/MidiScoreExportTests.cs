@@ -93,14 +93,14 @@ public sealed class MidiScoreExportTests
     }
 
     [Fact]
-    public void Render_DadraPickup_ReadsBackThreeAlignedTracks()
+    public void Render_DadraPickup_ReadsBackFourAlignedTracks()
     {
         CompositionScore score = RanjishHiSahiDraft.Create();
         byte[] bytes = MidiScoreExport.Render(score, score.Passes[0], 62, 120);
         MidiFile file = new(new MemoryStream(bytes), true);
 
         Assert.Equal(1, file.FileFormat);
-        Assert.Equal(3, file.Tracks);
+        Assert.Equal(4, file.Tracks);
         Assert.Equal(960, file.DeltaTicksPerQuarterNote);
         var melody = file.Events[0];
         var theka = file.Events[1];
@@ -194,6 +194,7 @@ public sealed class MidiScoreExportTests
             midi.Events[1].OfType<NoteOnEvent>().Where(n => n.AbsoluteTime >= 5760 && n.AbsoluteTime < (6 + bridge) * 960)
                 .Select(n => n.AbsoluteTime));
         Assert.DoesNotContain(midi.Events[2].OfType<NoteOnEvent>(), n => n.AbsoluteTime >= 5760 && n.AbsoluteTime < (6 + bridge) * 960);
+        Assert.DoesNotContain(midi.Events[3].OfType<NoteOnEvent>(), n => n.AbsoluteTime >= 5760 && n.AbsoluteTime < (6 + bridge) * 960);
     }
 
     [Fact]
@@ -224,6 +225,14 @@ public sealed class MidiScoreExportTests
             Assert.Equal([48, 52, 55], chords.Where(n => n.AbsoluteTime == 0).Select(n => n.NoteNumber));
             Assert.Equal(smooth ? [48, 52, 55] : new[] { 52, 55, 59 }, chords.Where(n => n.AbsoluteTime == 2880).Select(n => n.NoteNumber));
             Assert.All(chords, n => { Assert.Equal(2, n.Channel); Assert.Equal(2880, n.NoteLength); });
+            var bass = midi.Events[3].OfType<NoteOnEvent>().ToArray();
+            Assert.Equal("Bass", midi.Events[3].OfType<TextEvent>().First().Text);
+            Assert.Equal(32, Assert.Single(midi.Events[3].OfType<PatchChangeEvent>()).Patch);
+            Assert.Equal([36, 43, smooth ? 36 : 28], bass.Select(n => n.NoteNumber));
+            Assert.Equal([0L, 1920L, 2880L], bass.Select(n => n.AbsoluteTime));
+            Assert.Equal([1920, 960, 2880], bass.Select(n => n.NoteLength));
+            Assert.All(bass, n => Assert.Equal(3, n.Channel));
+            Assert.True(bass[2].Velocity < bass[0].Velocity);
         }
     }
 
