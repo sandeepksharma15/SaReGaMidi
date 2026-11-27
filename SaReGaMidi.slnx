@@ -1,3 +1,17 @@
 <Solution>
-  <Project Path="src/SaReGaMidi.UI/SaReGaMidi.UI.csproj" />
+  <Folder Name="/docs/">
+    <File Path=".github/copilot-instructions.md" />
+    <File Path="AGENTS.md" />
+    <File Path="docs/development/CODING_STYLE.md" />
+    <File Path="docs/development/PROJECT_MEMORY.md" />
+    <File Path="README.md" />
+  </Folder>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
+    <Project Path="src/SaReGaMidi.UI/SaReGaMidi.UI.csproj" />
+  </Folder>
+  <Folder Name="/tests/" />
 </Solution>
