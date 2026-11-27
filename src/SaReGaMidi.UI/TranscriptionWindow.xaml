@@ -128,9 +128,15 @@
                             </ControlTemplate>
                         </TabControl.Template>
                         <TabItem Header="_Notation" Style="{StaticResource WorkspaceTab}" Margin="0,0,6,0">
-                            <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
-                                <StackPanel x:Name="NotationSheet" Grid.IsSharedSizeScope="True" Margin="8" />
-                            </ScrollViewer>
+                            <DockPanel>
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="8,6">
+                                    <CheckBox x:Name="ShowChords" Content="Show chords" Click="ShowChords_Click" />
+                                    <TextBlock x:Name="HarmonyScope" Margin="12,0,0,0" VerticalAlignment="Center" Style="{StaticResource MutedText}" />
+                                </StackPanel>
+                                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                                    <StackPanel x:Name="NotationSheet" Grid.IsSharedSizeScope="True" Margin="8" />
+                                </ScrollViewer>
+                            </DockPanel>
                         </TabItem>
                         <TabItem Header="_Details" Style="{StaticResource WorkspaceTab}" Margin="0">
                             <DataGrid x:Name="MaatraGrid" AutoGenerateColumns="False" CanUserAddRows="False"

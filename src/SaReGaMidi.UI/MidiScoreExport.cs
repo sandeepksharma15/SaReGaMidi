@@ -75,7 +75,22 @@ internal static class MidiScoreExport
 
         List<MelodyNote> notes = [];
         int[] scale = FrequentOffsets(score, rareCutoff);
-        WriteHarmony(chords, bass, taal, timeline, offsets, scale, sa, smoothChords);
+        foreach (var division in PlanHarmony(taal, timeline, scale, sa, smoothChords))
+        {
+            long start = division.Start * (long)Resolution + offsets[division.Start];
+            long end = division.End * (long)Resolution + offsets[division.Start];
+            foreach (int pitch in division.Pitches)
+            {
+                int playable = pitch < 0 ? pitch + 12 : pitch > 127 ? pitch - 12 * ((pitch - 127 + 11) / 12) : pitch;
+                AddNote(chords, 2, playable, 60, start, end);
+            }
+            if (bass.Count == 1) // Only the track name has been written.
+                bass.Add(new PatchChangeEvent(start, 3, 32));
+            long rootEnd = division.PlayFifth ? end - Resolution : end;
+            AddNote(bass, 3, division.BassRoot, division.IsKhali ? 54 : 76, start, rootEnd);
+            if (division.PlayFifth)
+                AddNote(bass, 3, division.BassRoot + 7, 62, rootEnd, end);
+        }
         foreach (PlaybackNote note in timeline.Notes)
         {
             long start = Tick(note.Start) + offsets[note.Beat.Position];
@@ -158,7 +173,22 @@ internal static class MidiScoreExport
         }
     }
 
-    private static void WriteHarmony(IList<MidiEvent> track, IList<MidiEvent> bass, Taal taal, PlaybackTimeline timeline, long[] offsets,
+    internal sealed record HarmonyDivision(int Start, int End, int WrittenIndex, SwaraPitch Principal,
+        int Root, int[] Pitches, int BassRoot, bool PlayFifth, bool IsKhali)
+    {
+        internal string Name(int sa)
+        {
+            string rootName = WesternNoteNames.Format(sa, (Swara)Root, false);
+            var intervals = Pitches.Select(p => (p - sa - Root + 120) % 12).ToArray();
+            if (intervals.Length == 1) return rootName + " (root)";
+            if (intervals.Length == 2) return rootName + "5";
+            if (intervals.Contains(6)) return rootName + "dim";
+            if (intervals.Contains(8)) return rootName + "aug";
+            return intervals.Contains(3) ? rootName + "m" : rootName;
+        }
+    }
+
+    internal static IEnumerable<HarmonyDivision> PlanHarmony(Taal taal, PlaybackTimeline timeline,
         int[] scale, int sa, bool smooth)
     {
         Dictionary<int, Vibhaag> divisions = [];
@@ -176,7 +206,8 @@ internal static class MidiScoreExport
                 continue;
             int length = division.Theka.Count;
             int end = pos + 1;
-            while (end < timeline.Beats.Count && end < pos + length && offsets[end] == offsets[pos]
+            while (end < timeline.Beats.Count && end < pos + length
+                && timeline.Beats[end].TaalBeat == timeline.Beats[pos].TaalBeat + end - pos
                 && timeline.Beats[end].Section == timeline.Beats[pos].Section)
                 end++;
             PlaybackNote? first = Enumerable.Range(pos, end - pos).SelectMany(i => attacks[i]).FirstOrDefault();
@@ -186,21 +217,10 @@ internal static class MidiScoreExport
             var (root, chord) = ChooseChord(scale, degree, sa, smooth ? previous : null);
             if (chord.Length == 0)
                 continue;
-            long startTick = (long)pos * Resolution + offsets[pos];
-            long endTick = (long)end * Resolution + offsets[pos];
-            foreach (int pitch in chord)
-            {
-                int playable = pitch < 0 ? pitch + 12 : pitch > 127 ? pitch - 12 * ((pitch - 127 + 11) / 12) : pitch;
-                AddNote(track, 2, playable, 60, startTick, endTick);
-            }
-            if (previous is null)
-                bass.Add(new PatchChangeEvent(startTick, 3, 32)); // General MIDI acoustic bass.
             int bassRoot = 28 + (sa + root - 28 + 120) % 12;
             bool playFifth = end - pos >= 3 && !division.IsKhali && chord.Any(p => (p - sa - root + 120) % 12 == 7);
-            long rootEnd = playFifth ? endTick - Resolution : endTick;
-            AddNote(bass, 3, bassRoot, division.IsKhali ? 54 : 76, startTick, rootEnd);
-            if (playFifth)
-                AddNote(bass, 3, bassRoot + 7, 62, rootEnd, endTick);
+            yield return new(pos, end, timeline.Beats[pos].WrittenIndex, first.Swara.Pitch.Value,
+                root, chord, bassRoot, playFifth, division.IsKhali);
             previous = chord;
         }
     }
@@ -237,7 +257,7 @@ internal static class MidiScoreExport
         return (bass, scale.Contains((bass + 7) % 12) ? [sa - 12 + bass, sa - 5 + bass] : [sa - 12 + bass]);
     }
 
-    private static int[] FrequentOffsets(CompositionScore score, int cutoff)
+    internal static int[] FrequentOffsets(CompositionScore score, int cutoff)
     {
         var usage = ScaleAnalysis.CountNotes(score.Sections.SelectMany(section => section.Maatras).SelectMany(cell => cell.Swaras));
         int total = usage.Sum(note => note.Count);

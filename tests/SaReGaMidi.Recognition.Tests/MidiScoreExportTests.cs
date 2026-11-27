@@ -221,6 +221,13 @@ public sealed class MidiScoreExportTests
             MidiFile midi = new(new MemoryStream(MidiScoreExport.Render(score, new ScorePass("All", 0, 6), 60, 90,
                 smoothChords: smooth)), true);
             var chords = midi.Events[2].OfType<NoteOnEvent>().ToArray();
+            var timeline = ScorePerformance.BuildTimeline(score, [new ScorePass("All", 0, 6)]);
+            var labels = MidiScoreExport.PlanHarmony(TaalCatalog.FindByName("Dadra")!, timeline,
+                MidiScoreExport.FrequentOffsets(score, 5), 60, smooth).ToArray();
+            Assert.Equal(["C", smooth ? "C" : "Em"], labels.Select(label => label.Name(60)));
+            foreach (var label in labels)
+                Assert.Equal(label.Pitches, chords.Where(note => note.AbsoluteTime == label.Start * 960)
+                    .Select(note => note.NoteNumber));
             Assert.Equal("Chords", midi.Events[2].OfType<TextEvent>().First().Text);
             Assert.Equal([48, 52, 55], chords.Where(n => n.AbsoluteTime == 0).Select(n => n.NoteNumber));
             Assert.Equal(smooth ? [48, 52, 55] : new[] { 52, 55, 59 }, chords.Where(n => n.AbsoluteTime == 2880).Select(n => n.NoteNumber));
