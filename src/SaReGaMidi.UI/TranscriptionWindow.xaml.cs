@@ -83,7 +83,7 @@ public partial class TranscriptionWindow : Window
                 DisplayScore(score);
 
             _canEdit = true;
-            GenerateDraftButton.Visibility = score is null ? Visibility.Visible : Visibility.Collapsed;
+            GenerateDraftButton.Visibility = Visibility.Visible;
             ReferenceButton.Visibility = score is null && RanjishHiSahiDraft.Matches(_workspace.Pages)
                 ? Visibility.Visible : Visibility.Collapsed;
             StatusText.Text = score is null
@@ -393,7 +393,9 @@ public partial class TranscriptionWindow : Window
     private void UpdateActions()
     {
         EditorPanel.IsEnabled = _canEdit && !_busy;
-        GenerateDraftButton.IsEnabled = _recognitionCancellation is not null || (_canEdit && !_busy && _rows.Count == 0);
+        GenerateDraftButton.IsEnabled = _recognitionCancellation is not null || (_canEdit && !_busy);
+        GenerateDraftButton.Content = _recognitionCancellation is not null ? "_Cancel draft"
+            : _rows.Count > 0 ? "_Regenerate draft" : "_Generate draft";
         ReferenceButton.IsEnabled = _canEdit && !_busy;
         SaveButton.IsEnabled = _canEdit && !_busy;
     }

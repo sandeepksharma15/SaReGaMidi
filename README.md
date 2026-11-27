@@ -31,13 +31,15 @@ For the three original Ranjish Hi Sahi scans in reading order, **Load Ranjish Hi
 
 ### Generate a draft from scans
 
-Draft generation runs on the PC using [Tesseract 5](https://tesseract-ocr.github.io/tessdoc/Installation.html) and its [Hindi language model](https://github.com/tesseract-ocr/tessdata_best/blob/main/hin.traineddata). Install the model in Tesseract's `tessdata` folder. SaReGaMidi looks for `ocr/tesseract.exe` beside the app, the standard Windows installation, and then the system path. For a custom installation, set the Windows user environment variable `SAREGAMIDI_TESSERACT` to the full executable path and restart the app.
+Draft generation runs offline inside SaReGaMidi using [TesseractOCR 5.5.4](https://www.nuget.org/packages/TesseractOCR/5.5.4) by Charles Weld and Kees van Spelde. Build and publish include the native libraries and the [Hindi model from tessdata_fast](https://github.com/tesseract-ocr/tessdata_fast/blob/main/hin.traineddata). Windows requires the matching [Microsoft Visual C++ Redistributable](https://learn.microsoft.com/cpp/windows/latest-supported-vc-redist). Clear any existing `SAREGAMIDI_TESSERACT` user environment variable and restart the app to use the bundled engine.
 
 Open **Transcribe** in a new workspace, choose the taal, and select **Generate draft**. The draft opens beside the original scans. The prototype reads layouts with visible vibhaag dividers and equal-length divisions, such as Dadra. Review the flagged layout, swaras, lyrics, and any missing pages before selecting **Save score**. Complex ornaments, unequal subdivisions, and repeat paths require musical review.
 
 ### Test recognition
 
-Set `SAREGAMIDI_REFERENCE_SCANS` to a local folder containing the three original Ranjish Hi Sahi scans. The scans stay outside the repository. Run `dotnet test SaReGaMidi.slnx --logger "console;verbosity=normal"` to check the detected rows, line lengths, pickups, and repeat blanks against the existing transcription. Set `SAREGAMIDI_RUN_OCR_BENCHMARK=1` as well to measure exact timed-swara and lyric matches with a local Tesseract installation.
+Set `SAREGAMIDI_REFERENCE_SCANS` to a local folder containing the three original Ranjish Hi Sahi scans. The scans stay outside the repository. Run `dotnet run --project tests/SaReGaMidi.Recognition.Tests -- -showLiveOutput` to check the detected rows, line lengths, pickups, and repeat blanks against the existing transcription. Set `SAREGAMIDI_RUN_OCR_BENCHMARK=1` to include exact timed-swara and lyric comparisons.
+
+For an EXE comparison, rerun the benchmark with `SAREGAMIDI_TESSERACT` set to the full path of a Tesseract 5 executable. Both paths use the bundled Hindi model, the same PNG crops, and single-line segmentation.
 
 ## Development
 

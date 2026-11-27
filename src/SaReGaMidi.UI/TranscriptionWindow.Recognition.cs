@@ -20,7 +20,7 @@ public partial class TranscriptionWindow
             return;
         }
 
-        if (!_canEdit || _busy || _rows.Count > 0)
+        if (!_canEdit || _busy || !CommitGrid())
             return;
 
         if (TaalBox.SelectedItem is not Taal taal)
@@ -30,10 +30,15 @@ public partial class TranscriptionWindow
             return;
         }
 
+        if (_rows.Count > 0 && MessageBox.Show(this,
+            "Generate a fresh draft from the scans and replace this transcription, including any edits?",
+            Title, MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes)
+            return;
+
         using CancellationTokenSource cancellation = new();
         _recognitionCancellation = cancellation;
         _busy = true;
-        GenerateDraftButton.Content = "_Cancel draft";
+        RecognitionProgress.Visibility = Visibility.Visible;
         StatusText.Text = "Reading the ordered scans on this PC.";
         UpdateActions();
 
@@ -44,6 +49,9 @@ public partial class TranscriptionWindow
                 () => ScanRecognition.GenerateAsync(_workspace.Pages, taal, title, cancellation.Token),
                 cancellation.Token);
             cancellation.Token.ThrowIfCancellationRequested();
+            GenerateDraftButton.IsEnabled = false;
+            StatusText.Text = "Saving the generated draft...";
+            await _scoreFile.SaveAsync(draft.Score);
             ApplyRecognitionDraft(draft);
         }
         catch (OperationCanceledException)
@@ -59,7 +67,7 @@ public partial class TranscriptionWindow
         {
             _recognitionCancellation = null;
             _busy = false;
-            GenerateDraftButton.Content = "_Generate draft";
+            RecognitionProgress.Visibility = Visibility.Collapsed;
             UpdateActions();
         }
     }
@@ -68,11 +76,11 @@ public partial class TranscriptionWindow
     {
         DisplayScore(draft.Score, restoreReferenceLayout: false);
         ScoreTabs.SelectedIndex = 0;
-        _dirty = true;
-        GenerateDraftButton.Visibility = Visibility.Collapsed;
+        _dirty = false;
+        Saved = true;
         ReferenceButton.Visibility = Visibility.Collapsed;
         string missing = draft.MissingPages.Count == 0
             ? string.Empty : $" No notation detected on source page(s) {string.Join(", ", draft.MissingPages)}.";
-        StatusText.Text = $"Draft ready. Check the score against the scans, including {draft.ReviewCount} flagged maatras.{missing}";
+        StatusText.Text = $"Draft saved. Check the score against the scans, including {draft.ReviewCount} flagged maatras.{missing}";
     }
 }

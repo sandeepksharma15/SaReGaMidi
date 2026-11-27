@@ -139,6 +139,10 @@ internal static class ScanRecognition
                         : "Check this line's alignment and printed marks, including repeat and return cues.";
                     OcrReading swaraReading = cell.Symbol is string symbol ? new(symbol, 100) : ReadCrop(cell.Swaras);
                     OcrReading tightSwara = ReadCrop(cell.TightSwara);
+                    OcrReading isolated = ReadCrop(cell.Fallback);
+                    if (tightSwara.Text.EndsWith("म॑", StringComparison.Ordinal)
+                        && isolated.Text is "म" or "मं" && ReadSwaras(NormalizeSwara(swaraReading.Text)).Length == 0)
+                        swaraReading = new("म॑", tightSwara.Confidence);
                     if ((cell.DistantInk || swaraReading.Confidence < LowConfidence) && tightSwara.Confidence >= LowConfidence
                         && ReadSwaras(NormalizeSwara(tightSwara.Text), cell.Marks.Tivra).Length > 0)
                         swaraReading = tightSwara;
@@ -153,7 +157,7 @@ internal static class ScanRecognition
                     ScoreMaatra maatra = BuildMaatra(page + 1, cell.Swaras.HasValue || cell.Symbol is not null,
                         swaraReading, cell.Lyrics.HasValue || cell.LyricMarks.Found || cell.LyricSilence,
                         lyrics, index == 0, cue,
-                        ReadCrop(cell.Kan), ReadCrop(cell.Main), cell.Meend, ReadCrop(cell.Fallback), cell.Marks);
+                        ReadCrop(cell.Kan), ReadCrop(cell.Main), cell.Meend, isolated, cell.Marks);
                     if (maatra.Annotation.Length > 0)
                         reviewCount++;
 
@@ -208,6 +212,14 @@ internal static class ScanRecognition
             return new(leading + trailing, 100);
 
         string text = original.Text.Trim();
+        // A continuation touching the headline can look like the first consonant of a conjunct.
+        // Recover the syllable when the two isolated readings corroborate its consonant and vowel.
+        if (marks.Leading > 0 && marks.Trailing == 0 && text.Length == 4 && text[1] == '्'
+            && IsDevanagariLetter(text[2]) && text[3] is >= 'ा' and <= 'ौ'
+            && tight.Text.Length == 2 && body.Text.Length == 2
+            && tight.Text[0] == text[2] && body.Text[1] == text[3])
+            return new(leading + text[2..], Math.Min(body.Confidence, tight.Confidence));
+
         Match suffix = _continuationSuffix.Match(text);
         int end = suffix.Success ? suffix.Index : text.Length;
         int start = text.Length - text.TrimStart(sign).Length;

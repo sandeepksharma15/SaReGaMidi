@@ -1,12 +1,19 @@
-<Project Sdk="Microsoft.NET.Sdk">
-    <PropertyGroup>
-        <OutputType>WinExe</OutputType>
-        <TargetFramework>net11.0-windows</TargetFramework>
-        <Nullable>enable</Nullable>
-        <UseWPF>true</UseWPF>
-    </PropertyGroup>
-    <ItemGroup>
-        <ProjectReference Include="../SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
-        <InternalsVisibleTo Include="SaReGaMidi.Recognition.Tests" />
-    </ItemGroup>
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net11.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<UseWPF>true</UseWPF>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="../SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
+		<InternalsVisibleTo Include="SaReGaMidi.Recognition.Tests" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="TesseractOCR" Version="5.5.4" GeneratePathProperty="true" />
+		<None Update="tessdata/hin.traineddata;tessdata/LICENSE"
+			CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+		<None Include="$(PkgTesseractOCR)/native-licenses/*.txt" Link="licenses/%(Filename)%(Extension)"
+			CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+	</ItemGroup>
 </Project>

@@ -11,7 +11,12 @@
     <DockPanel Margin="20">
         <StatusBar DockPanel.Dock="Bottom" Style="{StaticResource WorkspaceStatusBar}" Margin="0,12,0,0">
             <StatusBarItem>
-                <TextBlock x:Name="StatusText" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite" />
+                <StackPanel Orientation="Horizontal">
+                    <ProgressBar x:Name="RecognitionProgress" Visibility="Collapsed" IsIndeterminate="True"
+                                 Width="72" Height="6" Margin="0,0,10,0" VerticalAlignment="Center"
+                                 AutomationProperties.Name="Transcription in progress" />
+                    <TextBlock x:Name="StatusText" Style="{StaticResource MutedText}" AutomationProperties.LiveSetting="Polite" />
+                </StackPanel>
             </StatusBarItem>
         </StatusBar>
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">

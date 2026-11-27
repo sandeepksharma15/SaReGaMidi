@@ -110,6 +110,19 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
 
         RecognitionDraft result = await ScanRecognition.GenerateAsync(pages, taal, reference.Title, timeout.Token);
 
+        DirectoryInfo workspace = Directory.CreateTempSubdirectory("SaReGaMidi-Draft-");
+        try
+        {
+            await new ScoreFile(workspace.FullName, pages.Length).SaveAsync(result.Score);
+            CompositionScore? reopened = await new ScoreFile(workspace.FullName, pages.Length).LoadAsync();
+            Assert.Equal(System.Text.Json.JsonSerializer.Serialize(result.Score),
+                System.Text.Json.JsonSerializer.Serialize(reopened));
+        }
+        finally
+        {
+            workspace.Delete(recursive: true);
+        }
+
         Assert.Empty(result.MissingPages);
         ScoreMaatra[][] expected = WrittenLines(reference).ToArray();
         ScoreMaatra[][] actual = WrittenLines(result.Score).ToArray();
@@ -146,11 +159,11 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
             cells.Select(pair => ContinuationEdges(pair.Actual.Lyrics)));
         Assert.Equal("Dha.>Ni.", MaatraNotation.Format(cells[1].Actual.Swaras));
         Assert.Equal("Ga MaTivra", MaatraNotation.Format(cells[3].Actual.Swaras));
-        int[] recoveredLyrics = [9, 10, 13, 39, 95, 105, 110, 116];
+        int[] recoveredLyrics = [9, 10, 13, 39, 68, 95, 105, 110, 116];
         foreach (int number in recoveredLyrics)
             Assert.Equal(cells[number - 1].Expected.Lyrics, cells[number - 1].Actual.Lyrics);
 
-        int[] recoveredSwaras = [14, 26, 51, 56, 59, 69, 70, 71, 75, 86];
+        int[] recoveredSwaras = [14, 26, 50, 51, 56, 59, 69, 70, 71, 75, 76, 85, 86];
         foreach (int number in recoveredSwaras)
             Assert.Equal<SwaraEvent>(cells[number - 1].Expected.Swaras, cells[number - 1].Actual.Swaras);
 

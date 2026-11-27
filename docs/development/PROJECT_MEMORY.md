@@ -25,7 +25,10 @@
 - Use printed ink geometry alongside OCR for notation-specific marks. Propose a meend only where an arc connects adjacent cells with readable pitches. Reserve visible review markers in the notation for unreadable swaras and keep other review cues in tooltips and Details.
 - Detect printed lyric continuation signs by shape and preserve their count and position around the syllable. Use Hindi OCR to read the syllable and keep the OCR fallback for ambiguous shapes.
 - Compare full-cell OCR with tighter crops for weak readings. Keep printed silence, lyric nukta, swara octave dots, and tivra strokes grounded in the scan geometry.
+- Run Tesseract through the TesseractOCR NuGet package by default and ship the benchmarked Hindi model with the app. Keep the explicit executable override for comparisons using the same model, crops, segmentation, and word confidence aggregation.
 - Explicit meend endpoints use stable swara anchors, following Clefer's span model. A span can cross multiple maatras and printed lines. Older next-swara meends remain readable.
 - The meend editor can filter destinations by written maatra distance. A fully blank maatra keeps its rhythm position and may still borrow swaras during a pass. The score exposes each written S as a LyricalContinuation marker on the lyric line.
+
+- Automatically save successful OCR drafts in the workspace score. Transcribe reopens the saved score. Regeneration replaces it after confirmation and successful recognition. Manual edits use Save score.
 
 Record agreed decisions and recurring constraints here. Keep task progress in the relevant work item or conversation.

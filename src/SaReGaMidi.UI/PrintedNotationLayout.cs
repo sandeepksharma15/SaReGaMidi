@@ -69,12 +69,20 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
                 int nextTop = trailing ? 2 * bars[^1].Y - bars[^2].Y : bars[division + 1].Y;
                 int count = divisionLengths[(division + divisionLengths.Length) % divisionLengths.Length];
                 List<PrintedCell> divisionCells = [];
+                int[] boundaries = new int[count + 1];
+                for (int beat = 0; beat <= count; beat++)
+                {
+                    int x = left + (right - left) * beat / count;
+                    int y = top + (nextTop - top) * beat / count;
+                    boundaries[beat] = trailing && beat > 0 && beat < count
+                        ? AlignTrailingBoundary(x, y, length, divisionWidth / (2 * count)) : x;
+                }
                 for (int beat = 0; beat < count; beat++)
                 {
                     int y = top + (nextTop - top) * (2 * beat + 1) / (2 * count);
                     int leftInset = beat == 0 && division >= 0 ? bars[division].Width + 3 : 2;
-                    int x1 = Math.Clamp(left + (right - left) * beat / count + leftInset, 0, _width);
-                    int x2 = Math.Clamp(left + (right - left) * (beat + 1) / count - 2, 0, _width);
+                    int x1 = Math.Clamp(boundaries[beat] + leftInset, 0, _width);
+                    int x2 = Math.Clamp(boundaries[beat + 1] - 2, 0, _width);
                     if (x2 - x1 < 12)
                         continue;
 
@@ -106,6 +114,32 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
         }
 
         return lines;
+    }
+
+    private int AlignTrailingBoundary(int x, int y, int height, int searchWidth)
+    {
+        // The last vibhaag has no closing divider. Its estimated cut can bisect a note or syllable.
+        int top = Math.Max(0, y);
+        int bottom = Math.Min(_height, y + height);
+        bool Occupied(int column)
+        {
+            for (int row = top; row < bottom; row++)
+                if (_ink[row * _width + column] != 0)
+                    return true;
+            return false;
+        }
+
+        if (x >= _width || x < searchWidth || !Occupied(x))
+            return x;
+
+        int gap = 0;
+        for (int column = x - 1; column >= x - searchWidth; column--)
+        {
+            gap = Occupied(column) ? 0 : gap + 1;
+            if (gap >= Math.Max(8, height / 10))
+                return column + gap / 2;
+        }
+        return x;
     }
 
     private List<Int32Rect> FindDividers(CancellationToken cancellationToken)
