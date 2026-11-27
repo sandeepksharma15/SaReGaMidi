@@ -16,6 +16,8 @@
         </StatusBar>
         <DockPanel DockPanel.Dock="Top" Margin="0,0,0,14">
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <Button x:Name="GenerateDraftButton" Content="_Generate draft" Style="{StaticResource ActionButton}"
+                        Click="GenerateDraft_Click" Visibility="Collapsed" Margin="0,0,8,0" />
                 <Button x:Name="ReferenceButton" Content="Load Ranjish Hi Sahi draft" Style="{StaticResource ActionButton}"
                         Click="Reference_Click" Visibility="Collapsed" Margin="0,0,8,0" />
                 <Button x:Name="SaveButton" Content="_Save score" Style="{StaticResource PrimaryButton}"

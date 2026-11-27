@@ -14,5 +14,7 @@
     <Project Path="src/SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
     <Project Path="src/SaReGaMidi.UI/SaReGaMidi.UI.csproj" />
   </Folder>
-  <Folder Name="/tests/" />
+  <Folder Name="/tests/">
+    <Project Path="tests/SaReGaMidi.Recognition.Tests/SaReGaMidi.Recognition.Tests.csproj" />
+  </Folder>
 </Solution>

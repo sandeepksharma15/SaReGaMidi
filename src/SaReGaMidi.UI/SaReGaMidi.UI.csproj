@@ -7,5 +7,6 @@
     </PropertyGroup>
     <ItemGroup>
         <ProjectReference Include="../SaReGaMidi.Music/SaReGaMidi.Music.csproj" />
+        <InternalsVisibleTo Include="SaReGaMidi.Recognition.Tests" />
     </ItemGroup>
 </Project>

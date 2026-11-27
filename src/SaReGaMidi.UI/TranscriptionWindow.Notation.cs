@@ -70,7 +70,7 @@ public partial class TranscriptionWindow
                 || !string.Equals(section, row.Section, StringComparison.OrdinalIgnoreCase);
             int beat = int.TryParse(row.Beat, out int cycleBeat) ? cycleBeat : 0;
 
-            if (newSection || row.StartsPrintedLine == true || columns >= lineLength)
+            if (newSection || row.StartsPrintedLine == true || (row.StartsPrintedLine is null && columns >= lineLength))
             {
                 if (newSection && !string.IsNullOrWhiteSpace(row.Section))
                 {
@@ -167,12 +167,32 @@ public partial class TranscriptionWindow
         List<MeendAnchor> anchors, bool showDivider)
     {
         StackPanel content = new();
-        content.Children.Add(new TextBlock
+        TextBlock beatMark = new()
         {
             Text = mark ?? " ",
             HorizontalAlignment = HorizontalAlignment.Center,
             FontSize = 12
-        });
+        };
+        bool needsReview = row.Annotation.StartsWith("Review: ", StringComparison.Ordinal);
+        if (row.Swaras.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains("?"))
+        {
+            Grid marks = new();
+            marks.Children.Add(beatMark);
+            TextBlock flag = new()
+            {
+                Text = "!",
+                HorizontalAlignment = HorizontalAlignment.Right,
+                FontWeight = FontWeights.SemiBold,
+                FontSize = 12
+            };
+            flag.SetResourceReference(TextBlock.ForegroundProperty, "MutedBrush");
+            marks.Children.Add(flag);
+            content.Children.Add(marks);
+        }
+        else
+        {
+            content.Children.Add(beatMark);
+        }
 
         bool blank = row.IsBlank && string.IsNullOrWhiteSpace(row.Swaras);
         IReadOnlyList<SwaraEvent> events;
@@ -207,7 +227,8 @@ public partial class TranscriptionWindow
             cell.SetResourceReference(BackgroundProperty, "SelectionBrush");
 
         string beatLabel = string.IsNullOrEmpty(row.Beat) ? string.Empty : $", beat {row.Beat}";
-        AutomationProperties.SetName(cell, $"Maatra {index + 1}{beatLabel}, {row.Swaras}, {row.Lyrics}");
+        string reviewLabel = needsReview ? $", {row.Annotation}" : string.Empty;
+        AutomationProperties.SetName(cell, $"Maatra {index + 1}{beatLabel}, {row.Swaras}, {row.Lyrics}{reviewLabel}");
         cell.Click += NotationCell_Click;
 
         Border boundary = new()

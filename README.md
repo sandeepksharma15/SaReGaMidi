@@ -29,6 +29,16 @@ From source review, select **Transcribe**. The **Notation** tab shows Devanagari
 
 For the three original Ranjish Hi Sahi scans in reading order, **Load Ranjish Hi Sahi draft** brings in the printed sthayi and antara as a draft. Review the notes and cues against the book. **Save score** stores the transcription as `score.json` in the workspace. Open **Transcribe** again to resume editing.
 
+### Generate a draft from scans
+
+Draft generation runs on the PC using [Tesseract 5](https://tesseract-ocr.github.io/tessdoc/Installation.html) and its [Hindi language model](https://github.com/tesseract-ocr/tessdata_best/blob/main/hin.traineddata). Install the model in Tesseract's `tessdata` folder. SaReGaMidi looks for `ocr/tesseract.exe` beside the app, the standard Windows installation, and then the system path. For a custom installation, set the Windows user environment variable `SAREGAMIDI_TESSERACT` to the full executable path and restart the app.
+
+Open **Transcribe** in a new workspace, choose the taal, and select **Generate draft**. The draft opens beside the original scans. The prototype reads layouts with visible vibhaag dividers and equal-length divisions, such as Dadra. Review the flagged layout, swaras, lyrics, and any missing pages before selecting **Save score**. Complex ornaments, unequal subdivisions, and repeat paths require musical review.
+
+### Test recognition
+
+Set `SAREGAMIDI_REFERENCE_SCANS` to a local folder containing the three original Ranjish Hi Sahi scans. The scans stay outside the repository. Run `dotnet test SaReGaMidi.slnx --logger "console;verbosity=normal"` to check the detected rows, line lengths, pickups, and repeat blanks against the existing transcription. Set `SAREGAMIDI_RUN_OCR_BENCHMARK=1` as well to measure exact timed-swara and lyric matches with a local Tesseract installation.
+
 ## Development
 
 - [Development plan](docs/development/DEVELOPMENT_PLAN.md)

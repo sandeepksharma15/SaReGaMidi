@@ -83,10 +83,11 @@ public partial class TranscriptionWindow : Window
                 DisplayScore(score);
 
             _canEdit = true;
+            GenerateDraftButton.Visibility = score is null ? Visibility.Visible : Visibility.Collapsed;
             ReferenceButton.Visibility = score is null && RanjishHiSahiDraft.Matches(_workspace.Pages)
                 ? Visibility.Visible : Visibility.Collapsed;
             StatusText.Text = score is null
-                ? "Choose a taal and enter the first maatra."
+                ? "Choose a taal, then generate a draft or enter the first maatra."
                 : "Score loaded. Select a maatra to find its source page.";
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException
@@ -144,9 +145,9 @@ public partial class TranscriptionWindow : Window
         }
     }
 
-    private void DisplayScore(CompositionScore score)
+    private void DisplayScore(CompositionScore score, bool restoreReferenceLayout = true)
     {
-        if (RanjishHiSahiDraft.Matches(_workspace.Pages))
+        if (restoreReferenceLayout && RanjishHiSahiDraft.Matches(_workspace.Pages))
             score = RanjishHiSahiDraft.RestoreBorrowedPickup(
                 RanjishHiSahiDraft.RestorePrintedLines(RanjishHiSahiDraft.RestorePasses(score)));
 
@@ -392,6 +393,7 @@ public partial class TranscriptionWindow : Window
     private void UpdateActions()
     {
         EditorPanel.IsEnabled = _canEdit && !_busy;
+        GenerateDraftButton.IsEnabled = _recognitionCancellation is not null || (_canEdit && !_busy && _rows.Count == 0);
         ReferenceButton.IsEnabled = _canEdit && !_busy;
         SaveButton.IsEnabled = _canEdit && !_busy;
     }
