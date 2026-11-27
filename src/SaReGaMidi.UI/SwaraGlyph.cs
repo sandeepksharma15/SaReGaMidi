@@ -11,17 +11,17 @@ namespace SaReGaMidi.UI;
 
 internal static class SwaraGlyph
 {
-    internal static FrameworkElement Create(SwaraEvent note)
+    internal static FrameworkElement Create(SwaraEvent note, double size = 18, double spacing = 2)
     {
         if (note.Pitch is SwaraPitch pitch)
         {
-            FrameworkElement glyph = Create(pitch);
+            FrameworkElement glyph = Create(pitch, size, spacing);
             if (note.Khatka)
             {
                 StackPanel bracketed = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-                bracketed.Children.Add(CreateLabel("("));
+                bracketed.Children.Add(CreateLabel("(", size));
                 bracketed.Children.Add(glyph);
-                bracketed.Children.Add(CreateLabel(")"));
+                bracketed.Children.Add(CreateLabel(")", size));
                 glyph = bracketed;
             }
 
@@ -29,7 +29,7 @@ internal static class SwaraGlyph
                 return glyph;
 
             StackPanel pair = new() { Orientation = Orientation.Horizontal, VerticalAlignment = VerticalAlignment.Center };
-            FrameworkElement grace = Create(kan, size: 11);
+            FrameworkElement grace = Create(kan, size * 11 / 18, spacing);
             grace.VerticalAlignment = VerticalAlignment.Top;
             grace.Margin = new Thickness(0, -3, 0, 0);
             pair.Children.Add(grace);
@@ -42,13 +42,13 @@ internal static class SwaraGlyph
             SwaraEventKind.Sustain => "–",
             SwaraEventKind.Silence => "*",
             _ => "?"
-        });
+        }, size);
     }
 
-    internal static FrameworkElement Create(SwaraPitch pitch, double size = 18)
+    internal static FrameworkElement Create(SwaraPitch pitch, double size = 18, double spacing = 2)
     {
         BhatkhandeSymbol symbol = BhatkhandeSymbols.GetSymbol(pitch);
-        Grid glyph = new() { Margin = new Thickness(2, 0, 2, 0), VerticalAlignment = VerticalAlignment.Center };
+        Grid glyph = new() { Margin = new Thickness(spacing, 0, spacing, 0), VerticalAlignment = VerticalAlignment.Center };
         glyph.RowDefinitions.Add(new RowDefinition { Height = new GridLength(5) });
         glyph.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
         glyph.RowDefinitions.Add(new RowDefinition { Height = new GridLength(5) });

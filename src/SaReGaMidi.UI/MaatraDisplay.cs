@@ -10,19 +10,15 @@ namespace SaReGaMidi.UI;
 
 internal sealed class MaatraDisplay : StackPanel
 {
+    private const double CompactWidth = 45;
+    private const double MinimumSwaraSize = 11;
+
     internal MaatraDisplay(IReadOnlyList<SwaraEvent> events, string lyrics, bool grouped, bool preview = false,
         bool blank = false)
     {
         Grid notes = new() { HorizontalAlignment = HorizontalAlignment.Center };
-        StackPanel glyphs = new() { Orientation = Orientation.Horizontal, Height = 32 };
+        StackPanel glyphs = CreateSwaraRow(events, Anchors);
         notes.Children.Add(glyphs);
-
-        foreach (SwaraEvent note in events)
-        {
-            FrameworkElement glyph = SwaraGlyph.Create(note);
-            glyphs.Children.Add(glyph);
-            Anchors.Add(new MeendAnchor(note, glyph));
-        }
 
         if (events.Count == 0 && !blank)
             glyphs.Children.Add(new TextBlock { Text = "+", VerticalAlignment = VerticalAlignment.Center });
@@ -57,6 +53,43 @@ internal sealed class MaatraDisplay : StackPanel
     }
 
     internal List<MeendAnchor> Anchors { get; } = [];
+
+    internal static StackPanel CreateSwaraRow(IReadOnlyList<SwaraEvent> events, List<MeendAnchor> anchors)
+    {
+        StackPanel glyphs = new() { Orientation = Orientation.Horizontal, Height = 32 };
+        double size = events.Count >= 4 ? 14 : 18;
+        double spacing = events.Count > 1 ? 0.5 : 2;
+        AddGlyphs(glyphs, events, anchors, size, spacing);
+
+        if (events.Count > 1)
+        {
+            glyphs.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            double width = glyphs.DesiredSize.Width;
+            if (width > CompactWidth)
+            {
+                // Reserve the fixed side spacing when scaling the glyphs to the beat column.
+                double padding = spacing * 2 * events.Count;
+                double fittedSize = size * (CompactWidth - padding) / (width - padding);
+                AddGlyphs(glyphs, events, anchors, Math.Max(MinimumSwaraSize, fittedSize), spacing);
+            }
+        }
+
+        return glyphs;
+    }
+
+    private static void AddGlyphs(StackPanel panel, IReadOnlyList<SwaraEvent> events, List<MeendAnchor> anchors,
+        double size, double spacing)
+    {
+        panel.Children.Clear();
+        anchors.Clear();
+
+        foreach (SwaraEvent note in events)
+        {
+            FrameworkElement glyph = SwaraGlyph.Create(note, size, spacing);
+            panel.Children.Add(glyph);
+            anchors.Add(new MeendAnchor(note, glyph));
+        }
+    }
 }
 
 internal sealed record MeendAnchor(SwaraEvent Note, FrameworkElement Glyph);

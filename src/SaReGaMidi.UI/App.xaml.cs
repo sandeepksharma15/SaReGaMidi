@@ -51,6 +51,7 @@ public partial class App : Application
         Resources["CanvasBrush"] = CreateBrush(dark ? "#171B20" : "#F3F5F8");
         Resources["CardBrush"] = CreateBrush(dark ? "#222830" : "#FFFFFF");
         Resources["LineBrush"] = CreateBrush(dark ? "#39424E" : "#DDE3EB");
+        Resources["EditorOutlineBrush"] = CreateBrush(dark ? "#637083" : "#A5B2BF");
         Resources["InkBrush"] = CreateBrush(dark ? "#F1F4F7" : "#172333");
         Resources["MutedBrush"] = CreateBrush(dark ? "#B5C0CC" : "#506076");
         Resources["SelectionBrush"] = CreateBrush(dark ? "#304B49" : "#D9EEEA");

@@ -19,6 +19,8 @@
 - The versioned score file stores composition, sections, and maatras. Each section starts on an explicit beat of the taal. Swara durations are exact maatra fractions. Lyric text and review annotations are stored separately from swara events. Source page references are independent of cycle timing. Khatka, kan swar and outgoing meend attach to pitched swaras. Maatra grouping is a display mark, and S extends the lyric syllable without changing musical time.
 
 - In the printed Sthayi of Ranjish Hi Sahi, the second pass borrows Dadra beats 1–3 from the upper row, then uses the lower row from beat 4. Borrowed swaras resolve through explicit written-maatra references while the written swara cells remain blank. Printed-line starts affect layout only.
+- Transcription shows the written score. Performance pass ranges remain in the saved score for playback. Swaras within a maatra use tighter spacing and can shrink to fit the beat column.
+- Transcription Details shows the calculated beat within the taal and uses the same Devanagari glyphs as Notation. Edit Maatra owns the source page, explicit start beat, and grouping controls.
 - Explicit meend endpoints use stable swara anchors, following Clefer's span model. A span can cross multiple maatras and printed lines. Older next-swara meends remain readable.
 - The meend editor can filter destinations by written maatra distance. A fully blank maatra keeps its rhythm position and may still borrow swaras during a pass. The score exposes each written S as a LyricalContinuation marker on the lyric line.
 

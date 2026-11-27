@@ -1,9 +1,13 @@
 <Window x:Class="SaReGaMidi.UI.TranscriptionWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:SaReGaMidi.UI"
         Title="Transcribe composition" Width="1380" Height="850" MinWidth="840" MinHeight="540"
         Loaded="Window_Loaded" WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Style="{StaticResource WorkspaceWindow}">
+    <Window.Resources>
+        <local:SwaraDisplayConverter x:Key="SwaraDisplay" />
+    </Window.Resources>
     <DockPanel Margin="20">
         <StatusBar DockPanel.Dock="Bottom" Style="{StaticResource WorkspaceStatusBar}" Margin="0,12,0,0">
             <StatusBarItem>
@@ -42,7 +46,7 @@
             <Border x:Name="EditorPanel" Grid.Column="2" Style="{StaticResource Card}" Padding="14" IsEnabled="False">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
-                        <Grid Margin="0,0,0,10">
+                        <Grid Margin="0,0,0,6">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition />
                                 <ColumnDefinition Width="155" />
@@ -57,39 +61,70 @@
                                           SelectionChanged="TaalBox_SelectionChanged" />
                             </StackPanel>
                         </Grid>
-                        <TextBlock Style="{StaticResource MutedText}" Margin="0,0,0,10"
-                                   Text="Select a maatra to edit its swaras and lyrics beside the source scan." />
-                        <StackPanel x:Name="PassControls" Orientation="Horizontal" Margin="0,0,0,8" Visibility="Collapsed">
-                            <Label Content="_Pass" Target="{Binding ElementName=PassBox}" />
-                            <ComboBox x:Name="PassBox" MinWidth="170" DisplayMemberPath="Name"
-                                      SelectionChanged="PassBox_SelectionChanged" FontFamily="Nirmala UI" />
-                        </StackPanel>
-                        <WrapPanel x:Name="RowControls" Margin="0,0,0,8">
-                            <Button Content="_Add maatra" Style="{StaticResource ActionButton}" Click="Add_Click" Margin="0,0,6,0" />
-                            <Button Content="_Insert before" Style="{StaticResource ActionButton}" Click="Insert_Click" Margin="0,0,6,0" />
-                            <Button Content="_Remove maatra" Style="{StaticResource ActionButton}" Click="Remove_Click" />
-                        </WrapPanel>
                     </StackPanel>
                     <TabControl x:Name="ScoreTabs" SelectionChanged="ScoreTabs_SelectionChanged">
-                        <TabItem Header="_Notation">
+                        <TabControl.Template>
+                            <ControlTemplate TargetType="TabControl">
+                                <DockPanel>
+                                    <Grid DockPanel.Dock="Top" Margin="0,6,0,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel IsItemsHost="True" Orientation="Horizontal"
+                                                    HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                    KeyboardNavigation.TabIndex="0"
+                                                    KeyboardNavigation.DirectionalNavigation="Cycle" />
+                                        <StackPanel x:Name="RowControls" Grid.Column="1" Orientation="Horizontal"
+                                                    VerticalAlignment="Center">
+                                            <Button Style="{StaticResource IconButton}" Click="Add_Click"
+                                                    ToolTip="Add maatra" AutomationProperties.Name="Add maatra">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE710;" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconButton}" Click="Insert_Click"
+                                                    ToolTip="Insert before selected maatra" AutomationProperties.Name="Insert before selected maatra">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE7A7;" />
+                                            </Button>
+                                            <Button Style="{StaticResource IconButton}" Click="Remove_Click"
+                                                    ToolTip="Remove selected maatra" AutomationProperties.Name="Remove selected maatra">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE74D;" />
+                                            </Button>
+                                        </StackPanel>
+                                    </Grid>
+                                    <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+                                </DockPanel>
+                            </ControlTemplate>
+                        </TabControl.Template>
+                        <TabItem Header="_Notation" Style="{StaticResource WorkspaceTab}" Margin="0,0,6,0">
                             <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
                                 <StackPanel x:Name="NotationSheet" Grid.IsSharedSizeScope="True" Margin="8" />
                             </ScrollViewer>
                         </TabItem>
-                        <TabItem Header="_Details">
+                        <TabItem Header="_Details" Style="{StaticResource WorkspaceTab}" Margin="0">
                             <DataGrid x:Name="MaatraGrid" AutoGenerateColumns="False" CanUserAddRows="False"
                                       CanUserDeleteRows="False" CanUserSortColumns="False" SelectionMode="Single"
                                       SelectionChanged="MaatraGrid_SelectionChanged" RowEditEnding="MaatraGrid_RowEditEnding"
                                       AutomationProperties.Name="Transcription by maatra"
                                       EnableRowVirtualization="True" HeadersVisibility="Column">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Page" Binding="{Binding SourcePage}" Width="48" />
-                                    <DataGridTextColumn Header="Section" Binding="{Binding Section}" Width="80" />
-                                    <DataGridTextColumn Header="Start beat" Binding="{Binding StartBeat}" Width="80" />
-                                    <DataGridTextColumn Header="Beat" Binding="{Binding Beat}" IsReadOnly="True" Width="48" />
-                                    <DataGridTextColumn Header="Swaras" Binding="{Binding Swaras}" Width="130" />
-                                    <DataGridCheckBoxColumn Header="New line" Binding="{Binding StartsPrintedLine}" Width="66" />
-                                    <DataGridCheckBoxColumn Header="Group" Binding="{Binding ShowGrouping}" Width="56" />
+                                    <DataGridTextColumn Header="Section" Binding="{Binding Section}" Width="84" />
+                                    <DataGridTextColumn Header="Beat" Binding="{Binding Beat}" IsReadOnly="True" Width="54" />
+                                    <DataGridTemplateColumn Header="Swaras" Width="110">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <ContentControl Content="{Binding Swaras, Converter={StaticResource SwaraDisplay}}"
+                                                                AutomationProperties.Name="{Binding Swaras}"
+                                                                HorizontalAlignment="Left" VerticalAlignment="Center"
+                                                                Margin="4,0" Focusable="False" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                        <DataGridTemplateColumn.CellEditingTemplate>
+                                            <DataTemplate>
+                                                <TextBox Text="{Binding Swaras, Mode=TwoWay}" />
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellEditingTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridCheckBoxColumn Header="New line" Binding="{Binding StartsPrintedLine}" Width="76" />
                                     <DataGridTextColumn Header="Lyrics" Binding="{Binding Lyrics}" Width="90" />
                                     <DataGridTextColumn Header="Notes / cues" Binding="{Binding Annotation}" Width="*" MinWidth="135" />
                                 </DataGrid.Columns>

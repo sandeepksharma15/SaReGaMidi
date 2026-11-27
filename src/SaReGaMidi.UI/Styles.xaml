@@ -77,6 +77,35 @@
         </Setter>
     </Style>
 
+    <Style x:Key="WorkspaceTab" TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="TabSurface" Background="{DynamicResource CanvasBrush}"
+                            BorderBrush="{DynamicResource EditorOutlineBrush}" BorderThickness="1"
+                            CornerRadius="6" Padding="12,8">
+                        <ContentPresenter ContentSource="Header" RecognizesAccessKey="True" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="TabSurface" Property="Background" Value="{DynamicResource SelectionBrush}" />
+                            <Setter TargetName="TabSurface" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="FontWeight" Value="SemiBold" />
+                        </Trigger>
+                        <Trigger Property="IsKeyboardFocused" Value="True">
+                            <Setter TargetName="TabSurface" Property="BorderThickness" Value="2" />
+                            <Setter TargetName="TabSurface" Property="Padding" Value="11,7" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style TargetType="ListBox" x:Key="PageListStyle">
         <Setter Property="Background" Value="{DynamicResource CanvasBrush}" />
         <Setter Property="Foreground" Value="{DynamicResource InkBrush}" />

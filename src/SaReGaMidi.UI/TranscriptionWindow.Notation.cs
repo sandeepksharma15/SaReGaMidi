@@ -17,7 +17,6 @@ public partial class TranscriptionWindow
         if (e.Source != ScoreTabs || MaatraGrid is null)
             return;
 
-        UpdatePassControls();
         if (ScoreTabs.SelectedIndex != 0)
             return;
 
@@ -28,26 +27,6 @@ public partial class TranscriptionWindow
         }
 
         UpdateBeats();
-    }
-
-    private void PassBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        if (MaatraGrid is null)
-            return;
-
-        UpdatePassControls();
-
-        if (PassBox.SelectedItem is PassSelection { First: not null } pass)
-            MaatraGrid.SelectedItem = pass.First;
-
-        RenderNotation();
-    }
-
-    private void UpdatePassControls()
-    {
-        bool notation = ScoreTabs.SelectedIndex == 0;
-        PassControls.Visibility = notation && _passes.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
-        RowControls.IsEnabled = !notation || PassBox.SelectedIndex <= 0;
     }
 
     private void RenderNotation()
@@ -84,14 +63,10 @@ public partial class TranscriptionWindow
         int columns = 0;
         string? section = null;
 
-        PassSelection? pass = PassBox.SelectedItem as PassSelection;
-        int first = pass?.First is TranscriptionRow firstRow ? _rows.IndexOf(firstRow) : 0;
-        int last = pass?.Last is TranscriptionRow lastRow ? _rows.IndexOf(lastRow) : _rows.Count - 1;
-
-        for (int index = first; index <= last; index++)
+        for (int index = 0; index < _rows.Count; index++)
         {
             TranscriptionRow row = _rows[index];
-            bool newSection = index == first || row.StartBeat.HasValue
+            bool newSection = index == 0 || row.StartBeat.HasValue
                 || !string.Equals(section, row.Section, StringComparison.OrdinalIgnoreCase);
             int beat = int.TryParse(row.Beat, out int cycleBeat) ? cycleBeat : 0;
 
@@ -124,7 +99,8 @@ public partial class TranscriptionWindow
 
             marks.TryGetValue(beat, out string? mark);
             AddNotationColumn(line, columns);
-            FrameworkElement cell = CreateNotationCell(row, mark, index, anchors, pass?.First is not null);
+            FrameworkElement cell = CreateNotationCell(row, mark, index, anchors,
+                showDivider: line.Children.Count > 0 && mark is not null);
             Grid.SetColumn(cell, columns);
             line.Children.Add(cell);
             columns++;
@@ -188,7 +164,7 @@ public partial class TranscriptionWindow
         });
 
     private FrameworkElement CreateNotationCell(TranscriptionRow row, string? mark, int index,
-        List<MeendAnchor> anchors, bool performingPass)
+        List<MeendAnchor> anchors, bool showDivider)
     {
         StackPanel content = new();
         content.Children.Add(new TextBlock
@@ -198,20 +174,18 @@ public partial class TranscriptionWindow
             FontSize = 12
         });
 
-        TranscriptionRow displayed = performingPass && row.IsBlank && string.IsNullOrWhiteSpace(row.Swaras)
-            ? row.BorrowedFrom ?? row : row;
-        bool blank = displayed.IsBlank && string.IsNullOrWhiteSpace(displayed.Swaras);
+        bool blank = row.IsBlank && string.IsNullOrWhiteSpace(row.Swaras);
         IReadOnlyList<SwaraEvent> events;
         try
         {
-            events = blank ? [] : MaatraNotation.Parse(displayed.Swaras);
+            events = blank ? [] : MaatraNotation.Parse(row.Swaras);
         }
         catch (FormatException)
         {
-            events = string.IsNullOrWhiteSpace(displayed.Swaras) ? [] : MaatraNotation.Parse("?");
+            events = string.IsNullOrWhiteSpace(row.Swaras) ? [] : MaatraNotation.Parse("?");
         }
 
-        MaatraDisplay display = new(events, row.Lyrics, displayed.ShowGrouping, blank: blank)
+        MaatraDisplay display = new(events, row.Lyrics, row.ShowGrouping, blank: blank)
         {
             Margin = new Thickness(0, 6, 0, 0)
         };
@@ -239,7 +213,7 @@ public partial class TranscriptionWindow
         Border boundary = new()
         {
             Child = cell,
-            BorderThickness = new Thickness(mark is null ? 0 : 1, 0, 0, 0)
+            BorderThickness = new Thickness(showDivider ? 1 : 0, 0, 0, 0)
         };
         boundary.SetResourceReference(Border.BorderBrushProperty, "MutedBrush");
         return boundary;
@@ -306,7 +280,7 @@ public partial class TranscriptionWindow
         return destinations;
     }
 
-    private sealed record PassSelection(string Name, TranscriptionRow? First, TranscriptionRow? Last);
+    private sealed record PassSelection(string Name, TranscriptionRow First, TranscriptionRow Last);
 }
 
 internal sealed record MeendDestination(TranscriptionRow Row, int NoteIndex, Guid Id, int Distance, string Label);

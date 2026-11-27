@@ -181,10 +181,7 @@ public partial class TranscriptionWindow : Window
         foreach (ScorePass pass in score.Passes)
             _passes.Add(new PassSelection(pass.Name, _rows[pass.StartMaatra], _rows[pass.StartMaatra + pass.MaatraCount - 1]));
 
-        PassBox.ItemsSource = new[] { new PassSelection("Written score", null, null) }.Concat(_passes).ToArray();
-        PassBox.SelectedIndex = 0;
         MaatraGrid.SelectedIndex = 0;
-        UpdatePassControls();
         UpdateBeats();
     }
 
@@ -236,8 +233,8 @@ public partial class TranscriptionWindow : Window
         {
             Passes = _passes.Select(pass =>
             {
-                int start = _rows.IndexOf(pass.First!);
-                int end = _rows.IndexOf(pass.Last!);
+                int start = _rows.IndexOf(pass.First);
+                int end = _rows.IndexOf(pass.Last);
                 return new ScorePass(pass.Name, start, end - start + 1);
             }).ToArray()
         };

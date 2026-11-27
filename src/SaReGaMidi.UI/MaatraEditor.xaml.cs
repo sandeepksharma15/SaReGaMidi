@@ -70,6 +70,7 @@ public partial class MaatraEditor : Window
             Message.Text = $"Check the earlier entry: {row.Swaras}";
         }
 
+        EventsList.SelectedIndex = _events.Count > 0 ? 0 : -1;
         UpdatePreview();
     }
 
@@ -90,8 +91,8 @@ public partial class MaatraEditor : Window
             Button button = new()
             {
                 Content = SwaraGlyph.Create(pitch),
-                Padding = new Thickness(0),
-                Margin = new Thickness(0, 0, 4, 5),
+                Padding = new Thickness(3, 5, 3, 5),
+                Margin = new Thickness(0, 0, 4, 0),
                 ToolTip = $"{swara} · {saptak}"
             };
             AutomationProperties.SetName(button, $"{swara}, {saptak}");
@@ -117,6 +118,7 @@ public partial class MaatraEditor : Window
             if (_events.Contains(target))
                 ReplaceEvent(target, target.Note with { KanSwara = note.Pitch });
 
+            EditorTabs.SelectedIndex = 1;
             return;
         }
 
@@ -156,12 +158,38 @@ public partial class MaatraEditor : Window
 
     private void Meend_Click(object sender, RoutedEventArgs e)
     {
+        if (MeendPanel.Visibility == Visibility.Visible)
+        {
+            MeendPanel.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         ClearKanSelection();
+        if (SelectedPitch() is not EventEntry entry)
+            return;
+
+        MeendPanel.Visibility = Visibility.Visible;
+        if (entry.Note.MeendTargetId is Guid target
+            && _destinations.FirstOrDefault(destination => destination.Id == target) is MeendDestination destination)
+        {
+            MeendDistanceBox.Text = destination.Distance.ToString();
+            MeendDestinationBox.SelectedItem = destination;
+        }
+    }
+
+    private void NextMeend_Click(object sender, RoutedEventArgs e)
+    {
         if (SelectedPitch() is EventEntry entry)
         {
-            bool hasMeend = entry.Note.MeendToNext || entry.Note.MeendTargetId.HasValue;
-            ReplaceEvent(entry, entry.Note with { MeendToNext = !hasMeend, MeendTargetId = null });
+            ReplaceEvent(entry, entry.Note with { MeendToNext = true, MeendTargetId = null });
+            Message.Text = "Meend ends at the next swara.";
         }
+    }
+
+    private void ClearMeend_Click(object sender, RoutedEventArgs e)
+    {
+        if (SelectedPitch() is EventEntry entry)
+            ReplaceEvent(entry, entry.Note with { MeendToNext = false, MeendTargetId = null });
     }
 
     private void SetMeend_Click(object sender, RoutedEventArgs e)
@@ -177,7 +205,7 @@ public partial class MaatraEditor : Window
         }
 
         ReplaceEvent(entry, entry.Note with { MeendToNext = false, MeendTargetId = target.Id });
-        Message.Text = $"Meend ends at {target.Label}. Use Meend to next / clear to remove it.";
+        Message.Text = $"Meend ends at {target.Label}.";
     }
 
     private void MeendDistance_Changed(object sender, TextChangedEventArgs e)
@@ -221,7 +249,8 @@ public partial class MaatraEditor : Window
         }
 
         _kanTarget = entry;
-        KanButton.Content = "Cancel kan";
+        CancelKanButton.Visibility = Visibility.Visible;
+        EditorTabs.SelectedIndex = 0;
         Message.Text = "Choose the kan swar from the palette. You can change its saptak first.";
     }
 
@@ -250,7 +279,7 @@ public partial class MaatraEditor : Window
             return;
 
         _kanTarget = null;
-        KanButton.Content = "Kan swar";
+        CancelKanButton.Visibility = Visibility.Collapsed;
         Message.Text = string.Empty;
     }
 
@@ -268,7 +297,7 @@ public partial class MaatraEditor : Window
 
     private void UpdatePreview()
     {
-        if (Preview is null || LyricsBox is null || GroupBox is null)
+        if (Preview is null || LyricsBox is null || GroupBox is null || BorrowBox is null)
             return;
 
         bool wholeBlank = WholeBlankBox.IsChecked == true;
@@ -285,6 +314,7 @@ public partial class MaatraEditor : Window
         {
             if (!int.TryParse(StartBeatBox.Text, out int beat) || beat < 1 || beat > _cycleLength)
             {
+                EditorTabs.SelectedIndex = 2;
                 Message.Text = $"Enter a start beat from 1 to {_cycleLength}, or leave it blank.";
                 return;
             }
@@ -294,6 +324,7 @@ public partial class MaatraEditor : Window
 
         if (PageBox.SelectedItem is not int page || string.IsNullOrWhiteSpace(SectionBox.Text))
         {
+            EditorTabs.SelectedIndex = 2;
             Message.Text = "Enter a section name and choose a source page.";
             return;
         }
