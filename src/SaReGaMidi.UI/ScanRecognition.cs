@@ -7,6 +7,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using SaReGaMidi.Music;
 using SaReGaMidi.Music.Rhythm;
 using SaReGaMidi.Music.Score;
 
@@ -99,6 +100,7 @@ internal static class ScanRecognition
                         }
                     }
 
+                    KomalMark? komal = cell.HasSwaras && symbol is null ? ink.ReadKomal(cleaned) : null;
                     cells[index] = new CellCrops(
                         cell.HasSwaras && symbol is null ? AddCrop(cleaned) : null,
                         !lyricSilence && cell.HasLyrics && (!lyricMarks.Found || lyricMarks.Body.HasValue)
@@ -112,7 +114,7 @@ internal static class ScanRecognition
                         marks.Fallback is Int32Rect fallback && symbol is null ? AddCrop(fallback) : null,
                         marks.Kan is Int32Rect kan ? AddCrop(kan) : null,
                         marks.Main is Int32Rect main ? AddCrop(main) : null,
-                        marks, arcs[index].HasValue, symbol);
+                        marks, arcs[index].HasValue, symbol, komal, komal is null ? null : AddCrop(komal.Text));
                 }
 
                 rows.Add((line, heading, cells));
@@ -162,6 +164,8 @@ internal static class ScanRecognition
                         swaraReading, cell.Lyrics.HasValue || cell.LyricMarks.Found || cell.LyricSilence,
                         lyrics, index == 0, cue,
                         ReadCrop(cell.Kan), ReadCrop(cell.Main), cell.Meend, isolated, cell.Marks);
+                    if (cell.Komal is KomalMark mark)
+                        maatra = ApplyKomal(maatra, mark, ReadCrop(cell.KomalText));
                     if (maatra.Annotation.Length > 0)
                         reviewCount++;
 
@@ -332,6 +336,30 @@ internal static class ScanRecognition
         };
     }
 
+    private static ScoreMaatra ApplyKomal(ScoreMaatra maatra, KomalMark mark, OcrReading clean)
+    {
+        string reading = ReadSwaras(NormalizeSwara(clean.Text));
+        bool recovered = maatra.Swaras is [{ Kind: SwaraEventKind.Unclear }] && reading.Length > 0;
+        SwaraEvent[] notes = (recovered ? MaatraNotation.Parse(reading) : maatra.Swaras).ToArray();
+        for (int index = 0; index < notes.Length; index++)
+        {
+            SwaraEvent note = notes[index];
+            if (note.Pitch is not SwaraPitch pitch)
+                continue;
+            int left = mark.Body.X + index * mark.Body.Width / notes.Length;
+            int right = mark.Body.X + (index + 1) * mark.Body.Width / notes.Length;
+            Swara swara = pitch.Swara;
+            if (mark.Left < (left + right) / 2 && mark.Right > (left + right) / 2)
+                swara = swara switch
+                {
+                    Swara.Re => Swara.ReKomal, Swara.Ga => Swara.GaKomal,
+                    Swara.Dha => Swara.DhaKomal, Swara.Ni => Swara.NiKomal, _ => swara
+                };
+            Saptak octave = mark.UpperDots.Any(x => x >= left && x < right) ? Saptak.Taar : pitch.Saptak;
+            notes[index] = note with { Pitch = new SwaraPitch(swara, octave) };
+        }
+        return maatra with { Swaras = notes };
+    }
     private static bool IsSinglePitch(string notation)
         => _swaraNames.Any(name => name.Notation == notation) || notation == "MaTivra";
 
@@ -408,7 +436,7 @@ internal static class ScanRecognition
     private sealed record CellCrops(int? Swaras, int? Lyrics, int? LyricBody, int? TightLyric, LyricMarks LyricMarks,
         bool LyricSilence, bool LyricNukta, int? TightSwara, int? UnmarkedMa, bool DistantInk,
         int? Fallback, int? Kan, int? Main, SwaraMarks Marks, bool Meend,
-        string? Symbol);
+        string? Symbol, KomalMark? Komal, int? KomalText);
 }
 
 internal sealed record RecognitionDraft(CompositionScore Score, int ReviewCount, IReadOnlyList<int> MissingPages);

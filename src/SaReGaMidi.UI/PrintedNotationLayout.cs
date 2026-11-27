@@ -88,6 +88,8 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
                         : trailing && beat > 0 && beat < count
                         ? AlignTrailingBoundary(x, y, length, divisionWidth / (2 * count)) : x;
                 }
+                if (division < 0 && count >= 4)
+                    AlignOpeningDivision(boundaries, top, nextTop, length);
                 for (int beat = 0; beat < count; beat++)
                 {
                     int y = top + (nextTop - top) * (2 * beat + 1) / (2 * count);
@@ -127,6 +129,31 @@ internal sealed class PrintedNotationLayout(BitmapSource source)
         return lines;
     }
 
+    private void AlignOpeningDivision(int[] cuts, int top, int nextTop, int height)
+    {
+        // The left margin has no divider. Use complete swara groups when all beats are visible.
+        List<(int Start, int End)> groups = [];
+        int left = Math.Max(0, cuts[0]);
+        int right = Math.Min(_width, cuts[^1] - 3);
+        for (int x = left; x < right; x++)
+        {
+            int y = top + (nextTop - top) * (x - cuts[0]) / (cuts[^1] - cuts[0]);
+            int ink = 0;
+            for (int row = Math.Max(0, y); row < Math.Min(_height, y + height * 43 / 100); row++)
+                ink += _ink[row * _width + x];
+            if (ink < 2)
+                continue;
+            if (groups.Count == 0 || x - groups[^1].End > height / 18)
+                groups.Add((x, x));
+            else
+                groups[^1] = (groups[^1].Start, x);
+        }
+        groups.RemoveAll(group => group.End - group.Start < height / 22);
+        if (groups.Count != cuts.Length - 1)
+            return;
+        for (int index = 1; index < groups.Count; index++)
+            cuts[index] = (groups[index - 1].End + groups[index].Start) / 2;
+    }
     private int FindBeatBoundary(int expected, int top, int height, int radius)
     {
         // A beat can contain several joined swaras. Look for the nearest clear gutter on both tiers.

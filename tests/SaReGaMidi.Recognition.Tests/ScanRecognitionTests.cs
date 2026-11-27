@@ -198,6 +198,30 @@ public sealed class ScanRecognitionTests(ITestOutputHelper output)
         Assert.Equal([48, 56], draft.Score.Sections.Select(section => section.Maatras.Count));
     }
 
+    [Fact]
+    public async Task GenerateAsync_KeharwaRescan_ReadsCrowdedSwaras()
+    {
+        string? folder = Environment.GetEnvironmentVariable("SAREGAMIDI_REFERENCE_SCANS");
+        string[] names = ["Scan_20261127_153314.jpg", "Scan_20261127_172451.jpg"];
+        if (folder is null || names.Any(name => !File.Exists(Path.Combine(folder, name)))
+            || Environment.GetEnvironmentVariable("SAREGAMIDI_RUN_OCR_BENCHMARK") != "1")
+            Assert.Skip("Requires the local Keharwa rescan and OCR benchmark.");
+
+        SourcePage[] pages = names.Select(name => SourcePage.Load(Path.Combine(folder, name))).ToArray();
+        Taal taal = TaalCatalog.FindByName("Keharwa")!;
+        RecognitionDraft draft = await ScanRecognition.GenerateAsync(pages, taal, "Keharwa", CancellationToken.None);
+        ScoreMaatra[][] lines = WrittenLines(draft.Score).ToArray();
+        foreach (ScoreMaatra[] line in lines)
+            output.WriteLine(string.Join(" | ", line.Select(cell => MaatraNotation.Format(cell.Swaras))));
+        Assert.Equal("GaKomal ReKomal", MaatraNotation.Format(lines[0][12].Swaras));
+        Assert.Equal("Sa'", MaatraNotation.Format(lines[3][2].Swaras));
+        Assert.Equal("GaKomal' Ma'", MaatraNotation.Format(lines[4][13].Swaras));
+        Assert.Equal("NiKomal", MaatraNotation.Format(lines[5][1].Swaras));
+        Assert.Equal("NiKomal DhaKomal", MaatraNotation.Format(lines[5][0].Swaras));
+        Assert.Equal([16, 16, 16, 16, 16, 16, 8], lines.Select(line => line.Length));
+        Assert.DoesNotContain(lines.SelectMany(line => line).SelectMany(cell => cell.Swaras), note => note.Kind == SwaraEventKind.Unclear);
+    }
+
     private static (int Leading, int Trailing) ContinuationEdges(string lyrics)
     {
         char sign = ScoreMaatra.LyricContinuationSign;

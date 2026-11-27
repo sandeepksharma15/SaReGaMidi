@@ -164,6 +164,54 @@ internal sealed class SwaraInk
         return Pad(new Int32Rect(left, top, right - left, bottom - top), crop);
     }
 
+    internal KomalMark? ReadKomal(Int32Rect crop)
+    {
+        List<InkShape> shapes = Components(crop);
+        InkShape? main = shapes.MaxBy(shape => shape.Area);
+        if (main is null || main.Bounds.Height < crop.Height / 4)
+            return null;
+        Int32Rect body = main.Bounds;
+        int left = Right(body);
+        int right = body.X;
+        int underlineTop = Bottom(body);
+        for (int y = Bottom(body) - 1; y >= Bottom(body) - 6; y--)
+        {
+            int run = 0;
+            for (int x = body.X; x <= Right(body); x++)
+            {
+                if (x < Right(body) && IsInk(x, y))
+                {
+                    run++;
+                    continue;
+                }
+                if (run >= Math.Max(14, body.Width / 4))
+                {
+                    int above = 0;
+                    for (int col = x - run; col < x; col++)
+                        if (IsInk(col, y - 5))
+                            above++;
+                    if (above * 2 < run)
+                    {
+                        left = Math.Min(left, x - run);
+                        right = Math.Max(right, x);
+                        underlineTop = Math.Min(underlineTop, y);
+                    }
+                }
+                run = 0;
+            }
+        }
+        if (right <= left)
+            return null;
+
+        int[] dots = shapes.Where(shape => Bottom(shape.Bounds) <= body.Y
+            && body.Y - Bottom(shape.Bounds) < body.Height / 2 && shape.Area >= 12
+            && shape.Bounds.Width <= 12 && shape.Bounds.Height <= 12)
+            .Select(shape => CenterX(shape.Bounds)).ToArray();
+        Int32Rect text = Pad(body, crop);
+        text.Height = underlineTop - text.Y;
+        return new KomalMark(text, body, left, right, dots);
+    }
+
     internal bool HasLyricNukta(Int32Rect crop)
     {
         List<InkShape> shapes = Components(crop);
@@ -376,3 +424,5 @@ internal readonly record struct LyricMarks(int Leading, int Trailing, Int32Rect?
 {
     internal bool Found => Leading + Trailing > 0;
 }
+
+internal sealed record KomalMark(Int32Rect Text, Int32Rect Body, int Left, int Right, int[] UpperDots);
