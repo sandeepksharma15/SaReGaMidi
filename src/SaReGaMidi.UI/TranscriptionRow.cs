@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SaReGaMidi.Music.Score;
 
 namespace SaReGaMidi.UI;
 
@@ -36,6 +37,8 @@ public sealed class TranscriptionRow : INotifyPropertyChanged
     public bool IsBlank { get; set; }
 
     internal TranscriptionRow? BorrowedFrom { get; set; }
+
+    internal ChordChoice? Chord { get; set; }
 
     public string Annotation { get; set; } = string.Empty;
 

@@ -37,7 +37,7 @@ The MIDI proof uses Type 1 files, one quarter note per maatra, 960 ticks per qua
 
 In-app playback auditions the exported MIDI through the Windows default MIDI output. Play and Export share passage, tonic and tempo for the open transcription. Live Melody, Theka, Chords and Bass switches affect the audition only. A selected phrase starts immediately at its written taal beat and can loop. The theka fills the Sthayi-to-Antara gap, or plays one extra cycle when the two melodies meet without a gap. Chords start on vibhaag boundaries using the frequent scale and the first principal attack in the division. Playback and export offer melody-rooted harmony or smoother voice leading.
 
-The optional Show chords overlay in Notation uses the same vibhaag harmony plan as MIDI. It shows the last auditioned or exported passage and tonic, and clicking a chord explains its principal swara, voicing and bass.
+The optional Show chords overlay in Notation uses the same vibhaag harmony plan as MIDI. The chord dialog previews a single division with all four tracks. Applying or restoring harmony saves the current score. A manual voicing belongs to its written starting maatra and stores its root and pitches relative to Sa, so reopening and transposition preserve the choice. Automatic harmony continues to follow the analysis cutoff and harmony mode.
 
 During audition, highlight the sounding melody swara in the written notation using MIDI event timing. Borrowed maatras highlight the source glyph, and a sustain keeps the preceding glyph highlighted until its note ends.
 

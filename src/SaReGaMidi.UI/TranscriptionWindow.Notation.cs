@@ -91,12 +91,6 @@ public partial class TranscriptionWindow
 
     private Button CreateChordButton(MidiScoreExport.HarmonyDivision division)
     {
-        string DescribePitch(int midi)
-        {
-            int degree = (midi - _sa + 120) % 12;
-            return $"{(Swara)degree} ({WesternNoteNames.Format(midi - degree, (Swara)degree)})";
-        }
-
         string name = division.Name(_sa);
         Button button = new()
         {
@@ -107,13 +101,29 @@ public partial class TranscriptionWindow
         button.SetResourceReference(ForegroundProperty, "AccentBrush");
         button.Click += (_, _) =>
         {
-            string bass = DescribePitch(division.BassRoot);
-            if (division.PlayFifth)
-                bass += $" → {DescribePitch(division.BassRoot + 7)} on the last beat";
-            string principal = DescribePitch(PitchConverter.GetMidiNote(division.Principal, _sa));
-            string tones = string.Join(", ", division.Pitches.Select(DescribePitch));
-            MessageBox.Show(this, $"First principal swara: {principal}\nChord tones: {tones}\nBass: {bass}",
-                name, MessageBoxButton.OK);
+            if (_playbackCancellation is not null)
+            {
+                StatusText.Text = "Stop playback to audition or change a chord.";
+                return;
+            }
+            int index = division.WrittenIndex;
+            ScorePass passage = new("Vibhaag", index, division.End - division.Start);
+            ChordWindow dialog = new(division, _sa, _rows[index].Chord is not null,
+                choice => MidiScoreExport.Render(BuildScore(index, choice), passage, _sa, _tempo,
+                    rareCutoff: (int)RareCutoff.Value, immediateStart: true, smoothChords: _smoothChords),
+                async choice =>
+                {
+                    await _scoreFile.SaveAsync(BuildScore(index, choice));
+                    _rows[index].Chord = choice;
+                    _dirty = false;
+                    Saved = true;
+                    ReferenceButton.Visibility = Visibility.Collapsed;
+                }) { Owner = this };
+            if (dialog.ShowDialog() == true)
+            {
+                RenderNotation();
+                StatusText.Text = "Saved the vibhaag harmony to the score.";
+            }
         };
         return button;
     }

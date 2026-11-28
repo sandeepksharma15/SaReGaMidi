@@ -1,5 +1,6 @@
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using NAudio.Midi;
 using SaReGaMidi.Music.Rhythm;
 using SaReGaMidi.Music.Score;
@@ -10,6 +11,46 @@ namespace SaReGaMidi.Recognition.Tests;
 
 public sealed class MidiScoreExportTests
 {
+    [Fact]
+    public async Task SavedVibhaagChord_ReopensTransposesAndRestoresAutomaticHarmony()
+    {
+        var cells = new[] { "Ga", "Sa", "Pa", "Ni", "Dha", "Ga" }
+            .Select(s => new ScoreMaatra(1, MaatraNotation.Parse(s), "", "")).ToArray();
+        CompositionScore score = new("Harmony", "Dadra", [new ScoreSection("A", 1, cells)]);
+        ScorePass all = new("All", 0, cells.Length);
+        var first = MidiScoreExport.PlanHarmony(TaalCatalog.FindByName("Dadra")!, ScorePerformance.BuildTimeline(score, [all]),
+            MidiScoreExport.FrequentOffsets(score, 5), 60, false).First();
+        var alternative = first.Suggestions.First(chord => chord.Root != first.Root);
+        DirectoryInfo temporary = Directory.CreateTempSubdirectory();
+        try
+        {
+            ScoreFile file = new(temporary.FullName, 1);
+            cells[0] = cells[0] with { Chord = alternative.RelativeTo(60) };
+            await file.SaveAsync(score);
+            CompositionScore loaded = Assert.IsType<CompositionScore>(await file.LoadAsync());
+            foreach (int tonic in new[] { 60, 62 })
+            {
+                foreach (ScorePass passage in new[] { all, new ScorePass("Preview", 0, 3) })
+                {
+                    MidiFile midi = new(new MemoryStream(MidiScoreExport.Render(loaded, passage, tonic, 90)), true);
+                    Assert.Equal(alternative.Pitches.Select(pitch => pitch + tonic - 60),
+                        midi.Events[2].OfType<NoteOnEvent>().Where(note => note.AbsoluteTime == 0).Select(note => note.NoteNumber));
+                    Assert.Equal(28 + (tonic + alternative.Root - 28) % 12, midi.Events[3].OfType<NoteOnEvent>().First().NoteNumber);
+                }
+            }
+            cells[0] = cells[0] with { Chord = null };
+            await file.SaveAsync(score);
+            loaded = Assert.IsType<CompositionScore>(await file.LoadAsync());
+            MidiFile restored = new(new MemoryStream(MidiScoreExport.Render(loaded, all, 60, 90)), true);
+            Assert.Equal(first.Pitches, restored.Events[2].OfType<NoteOnEvent>().Where(n => n.AbsoluteTime == 0).Select(n => n.NoteNumber));
+        }
+        finally
+        {
+            File.Delete(Path.Combine(temporary.FullName, "score.json"));
+            temporary.Delete();
+        }
+    }
+
     [Fact]
     public void Render_RanjishKhatka_PlaysFourEqualScaleNotesAndGlidesFromFinalPa()
     {
