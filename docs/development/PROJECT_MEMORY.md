@@ -8,6 +8,8 @@
 
 ## Implementation decisions
 
+- Group UI sources by feature in Workspace, Transcription, Notation, Recognition, Midi, and Settings. Keep XAML with its code-behind, keep transcription partials together, and retain the shared SaReGaMidi.UI namespace.
+
 - The initial Windows desktop shell is `src/SaReGaMidi.UI`, a C# WPF application targeting .NET 11. The current milestone establishes the application entry point and main window.
 - Keep the composition representation independent of WPF and MIDI so each output can use the same musical data.
 - `src/SaReGaMidi.Music` adapts swara and tonic-relative pitch calculations from Clefer.Domain and Devanagari pitch symbols from Clefer.Lipi. Komal underlines, tivra strokes and saptak dots are separate from the glyph text. [Notation reference](https://www.indianmusic.in/downloads/d5694c6845bb4439abb25138180f939f_Hindustani_Music_ThBook1_Eng.pdf)
