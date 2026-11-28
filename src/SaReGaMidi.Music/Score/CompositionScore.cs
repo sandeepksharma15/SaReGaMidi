@@ -22,6 +22,9 @@ public sealed record ScoreMaatra(int SourcePage, IReadOnlyList<SwaraEvent> Swara
 
     public bool ShowGrouping { get; init; }
 
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public ChordChoice? Chord { get; init; }
+
     /// <summary>Starts a new printed line without changing the rhythm or performance order.</summary>
     public bool? StartsPrintedLine { get; init; }
 
@@ -44,6 +47,9 @@ public sealed record ScoreMaatra(int SourcePage, IReadOnlyList<SwaraEvent> Swara
 }
 
 public readonly record struct LyricMarker(int TextOffset, SwaraEventKind Kind);
+
+/// <summary>A chord voicing relative to madhya Sa, attached to the written vibhaag start.</summary>
+public sealed record ChordChoice(Swara Root, IReadOnlyList<int> Offsets);
 
 public sealed record SwaraEvent(SwaraEventKind Kind, SwaraPitch? Pitch, MaatraFraction Duration)
 {

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Windows;
 using System.Windows.Automation;
@@ -7,6 +8,7 @@ using System.Windows.Controls;
 using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
+using SaReGaMidi.Music;
 using SaReGaMidi.Music.Rhythm;
 using SaReGaMidi.Music.Score;
 
@@ -85,12 +87,54 @@ public partial class TranscriptionWindow
             UpdateBeats();
     }
 
+    private void ShowChords_Click(object sender, RoutedEventArgs e) => RenderNotation();
+
+    private Button CreateChordButton(MidiScoreExport.HarmonyDivision division)
+    {
+        string name = division.Name(_sa);
+        Button button = new()
+        {
+            Content = name, ToolTip = $"View {name} chord tones and bass",
+            Padding = new Thickness(4, 1, 4, 1), HorizontalAlignment = HorizontalAlignment.Center
+        };
+        button.SetResourceReference(StyleProperty, "NotationCell");
+        button.SetResourceReference(ForegroundProperty, "AccentBrush");
+        button.Click += (_, _) =>
+        {
+            if (_playbackCancellation is not null)
+            {
+                StatusText.Text = "Stop playback to audition or change a chord.";
+                return;
+            }
+            int index = division.WrittenIndex;
+            ScorePass passage = new("Vibhaag", index, division.End - division.Start);
+            ChordWindow dialog = new(division, _sa, _rows[index].Chord is not null,
+                choice => MidiScoreExport.Render(BuildScore(index, choice), passage, _sa, _tempo,
+                    rareCutoff: (int)RareCutoff.Value, immediateStart: true, smoothChords: _smoothChords),
+                async choice =>
+                {
+                    await _scoreFile.SaveAsync(BuildScore(index, choice));
+                    _rows[index].Chord = choice;
+                    _dirty = false;
+                    Saved = true;
+                    ReferenceButton.Visibility = Visibility.Collapsed;
+                }) { Owner = this };
+            if (dialog.ShowDialog() == true)
+            {
+                RenderNotation();
+                StatusText.Text = "Saved the vibhaag harmony to the score.";
+            }
+        };
+        return button;
+    }
+
     private void RenderNotation()
     {
         if (NotationSheet is null)
             return;
 
         NotationSheet.Children.Clear();
+        HarmonyScope.Text = string.Empty;
         _notationGlyphs.Clear();
         _notationCells.Clear();
         if (_rows.Count == 0)
@@ -102,6 +146,26 @@ public partial class TranscriptionWindow
         }
 
         Taal? taal = TaalBox.SelectedItem as Taal;
+        Dictionary<int, MidiScoreExport.HarmonyDivision> harmony = [];
+        if (ShowChords.IsChecked == true && taal is not null)
+        {
+            try
+            {
+                CompositionScore score = BuildScore();
+                ScorePass passage = _lastPassage ?? new ScorePass("Whole written score", 0, _rows.Count);
+                if (passage.Name == "Whole written score" || passage.StartMaatra < 0 ||
+                    passage.StartMaatra > _rows.Count - passage.MaatraCount)
+                    passage = new ScorePass("Whole written score", 0, _rows.Count);
+                var timeline = ScorePerformance.BuildTimeline(score, [passage]);
+                harmony = MidiScoreExport.PlanHarmony(taal, timeline, MidiScoreExport.FrequentOffsets(score, (int)RareCutoff.Value),
+                    _sa, _smoothChords).ToDictionary(division => division.WrittenIndex);
+                HarmonyScope.Text = $"{passage.Name} · Sa {WesternNoteNames.Format(_sa)}";
+            }
+            catch (Exception error) when (error is InvalidDataException or FormatException or ArgumentException)
+            {
+                HarmonyScope.Text = error.Message;
+            }
+        }
         Dictionary<int, string> marks = [];
         int lineLength = taal is null ? 12 : taal.MaatraCount * (taal.MaatraCount <= 8 ? 2 : 1);
         int firstBeat = 1;
@@ -143,6 +207,11 @@ public partial class TranscriptionWindow
                 }
 
                 line = new Grid { HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(0, 0, 0, 12) };
+                if (harmony.Count > 0)
+                {
+                    line.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                    line.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
+                }
                 NotationSheet.Children.Add(line);
                 anchors = [];
                 lines.Add((line, anchors, newSection));
@@ -160,7 +229,15 @@ public partial class TranscriptionWindow
             FrameworkElement cell = CreateNotationCell(row, mark, index, anchors,
                 showDivider: line.Children.Count > 0 && mark is not null);
             Grid.SetColumn(cell, columns);
+            if (harmony.Count > 0)
+                Grid.SetRow(cell, 1);
             line.Children.Add(cell);
+            if (harmony.TryGetValue(index, out var divisionChord))
+            {
+                Button chord = CreateChordButton(divisionChord);
+                Grid.SetColumn(chord, columns);
+                line.Children.Add(chord);
+            }
             columns++;
             section = row.Section;
         }
@@ -206,6 +283,8 @@ public partial class TranscriptionWindow
             {
                 MeendLayer layer = new(lineAnchors, outgoing, incoming && !startsSection, spans[index]);
                 Grid.SetColumnSpan(layer, grid.ColumnDefinitions.Count);
+                if (harmony.Count > 0)
+                    Grid.SetRow(layer, 1);
                 grid.Children.Add(layer);
             }
 

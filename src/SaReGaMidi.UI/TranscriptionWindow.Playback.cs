@@ -29,6 +29,8 @@ public partial class TranscriptionWindow
         _sa = options.Sa;
         _tempo = options.Tempo;
         _smoothChords = options.SmoothChords;
+        if (ShowChords.IsChecked == true)
+            RenderNotation();
         if (playback)
             _loop = options.Loop;
         return options;

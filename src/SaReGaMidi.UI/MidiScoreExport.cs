@@ -75,7 +75,22 @@ internal static class MidiScoreExport
 
         List<MelodyNote> notes = [];
         int[] scale = FrequentOffsets(score, rareCutoff);
-        WriteHarmony(chords, bass, taal, timeline, offsets, scale, sa, smoothChords);
+        foreach (var division in PlanHarmony(taal, timeline, scale, sa, smoothChords))
+        {
+            long start = division.Start * (long)Resolution + offsets[division.Start];
+            long end = division.End * (long)Resolution + offsets[division.Start];
+            foreach (int pitch in division.Pitches)
+            {
+                int playable = pitch < 0 ? pitch + 12 : pitch > 127 ? pitch - 12 * ((pitch - 127 + 11) / 12) : pitch;
+                AddNote(chords, 2, playable, 60, start, end);
+            }
+            if (bass.Count == 1) // Only the track name has been written.
+                bass.Add(new PatchChangeEvent(start, 3, 32));
+            long rootEnd = division.PlayFifth ? end - Resolution : end;
+            AddNote(bass, 3, division.BassRoot, division.IsKhali ? 54 : 76, start, rootEnd);
+            if (division.PlayFifth)
+                AddNote(bass, 3, division.BassRoot + 7, 62, rootEnd, end);
+        }
         foreach (PlaybackNote note in timeline.Notes)
         {
             long start = Tick(note.Start) + offsets[note.Beat.Position];
@@ -158,7 +173,26 @@ internal static class MidiScoreExport
         }
     }
 
-    private static void WriteHarmony(IList<MidiEvent> track, IList<MidiEvent> bass, Taal taal, PlaybackTimeline timeline, long[] offsets,
+    internal sealed record HarmonyDivision(int Start, int End, int WrittenIndex, SwaraPitch Principal,
+        int Root, int[] Pitches, int BassRoot, bool PlayFifth, bool IsKhali)
+    {
+        internal HarmonyDivision[] Suggestions { get; init; } = [];
+
+        internal ChordChoice RelativeTo(int sa) => new((Swara)Root, Pitches.Select(p => p - sa).ToArray());
+
+        internal string Name(int sa)
+        {
+            string rootName = WesternNoteNames.Format(sa, (Swara)Root, false);
+            var intervals = Pitches.Select(p => (p - sa - Root + 120) % 12).ToArray();
+            if (intervals.Length == 1) return rootName + " (root)";
+            if (intervals.Length == 2) return rootName + "5";
+            if (intervals.Contains(6)) return rootName + "dim";
+            if (intervals.Contains(8)) return rootName + "aug";
+            return intervals.Contains(3) ? rootName + "m" : rootName;
+        }
+    }
+
+    internal static IEnumerable<HarmonyDivision> PlanHarmony(Taal taal, PlaybackTimeline timeline,
         int[] scale, int sa, bool smooth)
     {
         Dictionary<int, Vibhaag> divisions = [];
@@ -176,36 +210,35 @@ internal static class MidiScoreExport
                 continue;
             int length = division.Theka.Count;
             int end = pos + 1;
-            while (end < timeline.Beats.Count && end < pos + length && offsets[end] == offsets[pos]
+            while (end < timeline.Beats.Count && end < pos + length
+                && timeline.Beats[end].TaalBeat == timeline.Beats[pos].TaalBeat + end - pos
                 && timeline.Beats[end].Section == timeline.Beats[pos].Section)
                 end++;
             PlaybackNote? first = Enumerable.Range(pos, end - pos).SelectMany(i => attacks[i]).FirstOrDefault();
             if (first is null)
                 continue;
             int degree = (int)first.Swara.Pitch!.Value.Swara;
-            var (root, chord) = ChooseChord(scale, degree, sa, smooth ? previous : null);
-            if (chord.Length == 0)
+            var suggestions = RankChords(scale, degree, sa, smooth ? previous : null)
+                .Select(candidate => MakeDivision(candidate.Root, candidate.Notes)).ToArray();
+            ChordChoice? saved = timeline.Beats[pos].Chord;
+            HarmonyDivision? selected = saved is null ? suggestions.FirstOrDefault()
+                : MakeDivision((int)saved.Root, saved.Offsets.Select(offset => sa + offset).ToArray());
+            if (selected is null)
                 continue;
-            long startTick = (long)pos * Resolution + offsets[pos];
-            long endTick = (long)end * Resolution + offsets[pos];
-            foreach (int pitch in chord)
+            yield return selected with { Suggestions = suggestions };
+            previous = selected.Pitches;
+
+            HarmonyDivision MakeDivision(int root, int[] chord)
             {
-                int playable = pitch < 0 ? pitch + 12 : pitch > 127 ? pitch - 12 * ((pitch - 127 + 11) / 12) : pitch;
-                AddNote(track, 2, playable, 60, startTick, endTick);
+                int bassRoot = 28 + (sa + root - 28 + 120) % 12;
+                bool playFifth = end - pos >= 3 && !division.IsKhali && chord.Any(p => (p - sa - root + 120) % 12 == 7);
+                return new(pos, end, timeline.Beats[pos].WrittenIndex, first.Swara.Pitch.Value,
+                    root, chord, bassRoot, playFifth, division.IsKhali);
             }
-            if (previous is null)
-                bass.Add(new PatchChangeEvent(startTick, 3, 32)); // General MIDI acoustic bass.
-            int bassRoot = 28 + (sa + root - 28 + 120) % 12;
-            bool playFifth = end - pos >= 3 && !division.IsKhali && chord.Any(p => (p - sa - root + 120) % 12 == 7);
-            long rootEnd = playFifth ? endTick - Resolution : endTick;
-            AddNote(bass, 3, bassRoot, division.IsKhali ? 54 : 76, startTick, rootEnd);
-            if (playFifth)
-                AddNote(bass, 3, bassRoot + 7, 62, rootEnd, endTick);
-            previous = chord;
         }
     }
 
-    private static (int Root, int[] Notes) ChooseChord(int[] scale, int degree, int sa, int[]? previous)
+    private static IEnumerable<(int Root, int[] Notes)> RankChords(int[] scale, int degree, int sa, int[]? previous)
     {
         List<(int Root, int[] Notes)> candidates = [];
         foreach (int root in scale)
@@ -224,20 +257,23 @@ internal static class MidiScoreExport
             }
         }
         // Prefer a chord containing the attack. For an out-of-scale attack use the closest scale harmony.
-        var best = candidates.OrderBy(c => c.Notes.Min(p =>
+        if (candidates.Count > 0)
+        {
+            var ranked = candidates.OrderBy(c => c.Notes.Min(p =>
             Math.Min((p - sa - degree + 120) % 12, (sa + degree - p + 120) % 12)))
-            .ThenBy(c => previous is { Length: 3 } ? c.Notes.Zip(previous, (a, b) => Math.Abs(a - b)).Sum() : 0)
-            .ThenBy(c => c.Root == degree ? 0 : 1).FirstOrDefault();
+                .ThenBy(c => previous is { Length: 3 } ? c.Notes.Zip(previous, (a, b) => Math.Abs(a - b)).Sum() : 0)
+                .ThenBy(c => c.Root == degree ? 0 : 1);
+            return ranked.DistinctBy(c => (c.Root, Mask: c.Notes.Sum(p => 1 << ((p + 12) % 12))))
+                .Where((c, index) => index == 0 || c.Notes.Any(p => (p - sa - degree + 120) % 12 == 0)).Take(3);
+        }
         // A sparse scale may have no complete triad. Use the available root and fifth if present.
-        if (best.Notes is not null)
-            return best;
         if (scale.Length == 0)
-            return (0, []);
+            return [];
         int bass = scale.Contains(degree) ? degree : scale[0];
-        return (bass, scale.Contains((bass + 7) % 12) ? [sa - 12 + bass, sa - 5 + bass] : [sa - 12 + bass]);
+        return [(bass, scale.Contains((bass + 7) % 12) ? [sa - 12 + bass, sa - 5 + bass] : [sa - 12 + bass])];
     }
 
-    private static int[] FrequentOffsets(CompositionScore score, int cutoff)
+    internal static int[] FrequentOffsets(CompositionScore score, int cutoff)
     {
         var usage = ScaleAnalysis.CountNotes(score.Sections.SelectMany(section => section.Maatras).SelectMany(cell => cell.Swaras));
         int total = usage.Sum(note => note.Count);

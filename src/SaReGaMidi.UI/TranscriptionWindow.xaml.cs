@@ -215,6 +215,7 @@ public partial class TranscriptionWindow : Window
                     BorrowedFrom = maatra.BorrowedFrom is int source ? _rows[source] : null,
                     Lyrics = maatra.Lyrics,
                     ShowGrouping = maatra.ShowGrouping,
+                    Chord = maatra.Chord,
                     StartsPrintedLine = maatra.StartsPrintedLine,
                     Annotation = maatra.Annotation
                 });
@@ -230,7 +231,7 @@ public partial class TranscriptionWindow : Window
         UpdateBeats();
     }
 
-    private CompositionScore BuildScore()
+    private CompositionScore BuildScore(int chordIndex = -1, ChordChoice? chord = null)
     {
         if (TaalBox.SelectedItem is not Taal taal)
             throw new InvalidDataException("Choose a taal before saving the score.");
@@ -263,6 +264,7 @@ public partial class TranscriptionWindow : Window
                 maatras.Add(new ScoreMaatra(row.SourcePage, events, row.Lyrics, row.Annotation)
                 {
                     ShowGrouping = row.ShowGrouping,
+                    Chord = index == chordIndex ? chord : row.Chord,
                     StartsPrintedLine = row.StartsPrintedLine,
                     BorrowedFrom = events.Count == 0 && row.BorrowedFrom is TranscriptionRow source
                         ? _rows.IndexOf(source) : null

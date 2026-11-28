@@ -104,6 +104,10 @@ internal sealed class ScoreFile(string folderPath, int pageCount)
 
                 if (maatra.Swaras.Count > 0)
                     MaatraNotation.Validate(maatra.Swaras);
+                if (maatra.Chord is { } chord && (!Enum.IsDefined(chord.Root) || chord.Offsets is not { Count: >= 1 and <= 3 }
+                    || chord.Offsets.Any(offset => offset is < -12 or > 23)
+                    || !chord.Offsets.Any(offset => (offset + 12) % 12 == (int)chord.Root)))
+                    throw new InvalidDataException("The saved chord has an invalid root or voicing.");
             }
         }
 

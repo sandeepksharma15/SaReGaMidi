@@ -29,7 +29,10 @@ public static class ScorePerformance
                 var cell = written[index];
                 int source = cell.Maatra.BorrowedFrom ?? index;
                 IReadOnlyList<SwaraEvent> swaras = written[source].Maatra.Swaras;
-                PlaybackBeat beat = new(beats.Count, cell.Beat, cell.Section, index, source, cell.Maatra.Lyrics);
+                PlaybackBeat beat = new(beats.Count, cell.Beat, cell.Section, index, source, cell.Maatra.Lyrics)
+                {
+                    Chord = cell.Maatra.Chord
+                };
                 beats.Add(beat);
                 if (swaras.Count == 0)
                 {
@@ -84,7 +87,10 @@ public sealed record PlaybackTimeline(IReadOnlyList<PlaybackBeat> Beats, IReadOn
     IReadOnlyList<PlaybackBeat> UnclearBeats);
 
 public sealed record PlaybackBeat(int Position, int TaalBeat, string Section, int WrittenIndex, int SwaraSourceIndex,
-    string Lyrics);
+    string Lyrics)
+{
+    public ChordChoice? Chord { get; init; }
+}
 
 public sealed record PlaybackNote(PlaybackBeat Beat, SwaraEvent Swara, PlaybackTime Start, PlaybackTime End)
 {
